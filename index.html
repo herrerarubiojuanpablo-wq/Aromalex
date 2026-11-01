@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AromaLex Studio</title>
+<style>
+:root{
+  --purple:#3D2B56; --purple-d:#2A1D3D; --lav:#EFEAF7; --line:#D9D0EA; --gold:#C9A227;
+  --ink:#2A2140; --muted:#685F7D; --ok:#2E7D46; --okbg:#E4F3E6; --bad:#B0413E; --badbg:#FBEAE8;
+  --warn:#8A6A00; --warnbg:#FFF4CC; --bg:#F7F5FB;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:"Segoe UI",Calibri,Arial,sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
+h1,h2,h3{margin:0}
+button,select,input{font-family:inherit;font-size:13px}
+
+/* ---------- cabecera ---------- */
+.top{background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:12px 28px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;border-radius:50%;background:var(--gold);color:var(--purple-d);display:flex;align-items:center;justify-content:center;font:700 20px Cambria,Georgia,serif}
+.brand h1{font:700 20px Cambria,Georgia,serif}
+.brand p{margin:2px 0 0;font-size:12px;color:#CFC4E6}
+.tabs{display:flex;gap:4px}
+.tabs.main button{background:transparent;color:#DCD3EE;border:0;padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600}
+.tabs.main button:hover{background:rgba(255,255,255,.1)}
+.tabs.main button.active{background:#fff;color:var(--purple)}
+
+main{padding:18px 28px 40px;max-width:1500px;margin:0 auto}
+.panel{display:none}
+.panel.active{display:block}
+
+/* ---------- tarjetas y botones ---------- */
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{font:700 18px Cambria,Georgia,serif;color:var(--purple);margin-bottom:10px}
+.card h3{font:700 14px "Segoe UI",sans-serif;color:var(--purple);margin-bottom:8px}
+.grid2{display:grid;grid-template-columns:minmax(380px,1fr) minmax(380px,1fr);gap:16px;align-items:start}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:7px 13px;border-radius:8px;cursor:pointer;font-weight:600}
+.btn:hover:not(:disabled){background:var(--lav)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn.primary:hover:not(:disabled){background:var(--purple-d)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#2A2140}
+.btn.danger{color:var(--bad);border-color:#E6B8B5}
+.btn.small{padding:4px 10px;font-size:12px}
+label{display:block;font-size:12px;color:var(--muted);font-weight:600}
+input,select{border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--ink);background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid #B9A6E0;outline-offset:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.head h2{margin:0}
+.msg{min-height:20px;margin:8px 0;font-size:13px;color:var(--bad)}
+.msg.ok{color:var(--ok)}
+table{border-collapse:collapse;width:100%}
+th{background:var(--purple);color:#fff;text-align:left;font-size:12px;padding:7px 10px}
+td{border-bottom:1px solid var(--line);padding:6px 10px;font-size:13px;vertical-align:top}
+tr:nth-child(even) td{background:#FAF8FD}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.vacio{color:var(--muted);font-style:italic;padding:8px 2px}
+code,pre{font-family:Consolas,"Courier New",monospace}
+
+/* ---------- recetas ---------- */
+.meter .bar{height:16px;background:var(--lav);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.meter .bar div{height:100%;width:0;background:linear-gradient(90deg,#7B63B5,var(--gold));transition:width .3s}
+.meter .bar div.full{background:var(--ok)}
+.meter .txt{margin-top:6px;font-weight:700;color:var(--purple)}
+.ing-form{display:grid;grid-template-columns:130px 1fr 90px auto;gap:8px;align-items:end;margin:12px 0 0}
+.ing-form input,.ing-form select{width:100%}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.tag.t1{background:#E9E1F7;color:#4B2E83}.tag.t2{background:#FFF1C2;color:#7A5B00}.tag.t3{background:#DDF1F5;color:#17606F}
+.receta{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+.receta .rh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.receta .rh b{font:700 16px Cambria,Georgia,serif;color:var(--purple)}
+.receta pre{background:var(--purple-d);color:#EFEAF7;border-radius:8px;padding:10px;font-size:12px;line-height:1.5;overflow:auto;max-height:260px;margin:8px 0 0}
+
+/* ---------- compilador ---------- */
+.workspace{display:grid;grid-template-columns:minmax(440px,1fr) minmax(480px,1.1fr);gap:16px;align-items:start}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.toolbar select{max-width:260px}
+.toolbar input[type=range]{width:90px;padding:0;accent-color:var(--purple)}
+.stepbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--warnbg);border:1px solid #EBD58A;border-radius:8px;padding:8px 10px;margin-bottom:10px}
+.stepbar[hidden]{display:none}
+.stepbar span{color:var(--warn);font-weight:600;font-size:12px}
+.editor{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;height:390px;background:#fff;font:13px/20px Consolas,"Courier New",monospace}
+.gutter{width:44px;background:var(--lav);color:var(--muted);text-align:right;padding:8px 8px 8px 0;overflow:hidden;white-space:pre;user-select:none;line-height:20px}
+.edwrap{position:relative;flex:1;min-width:0}
+#hl{position:absolute;inset:0;overflow:hidden;padding:8px 0;pointer-events:none}
+#hl div{height:20px}
+#hl .cur{background:#FFE9A8}
+#hl .err{background:#F8CFCB}
+#code{position:absolute;inset:0;width:100%;height:100%;border:0;resize:none;background:transparent;padding:8px 10px;font:13px/20px Consolas,"Courier New",monospace;color:var(--ink);white-space:pre;overflow:auto;tab-size:2}
+#code:focus{outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+.chip{background:var(--lav);border:1px solid var(--line);border-radius:8px;padding:4px 9px;font:12.5px Consolas,monospace}
+.chip b{color:var(--purple)}
+.chip.chg{background:#FFE9A8;border-color:#E5C65A}
+.chip.const{border-style:dashed}
+#consola{background:var(--purple-d);color:#EFEAF7;border-radius:8px;padding:10px 12px;height:190px;overflow:auto;font:12.5px/1.5 Consolas,monospace;white-space:pre-wrap}
+#consola .err{color:#FFB4AE}
+#consola .sys{color:#A99BCB}
+#consola .ask{color:#F2D675}
+#consola .okk{color:#8FE0A6}
+.inrow{display:flex;gap:8px;align-items:center;margin-top:8px}
+.inrow #prompt{color:var(--muted);font-size:12px;min-width:120px}
+.inrow input{flex:1}
+.pipe{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.stage{flex:1;min-width:96px;border:1px solid var(--line);border-radius:10px;padding:7px 9px;background:#fff;position:relative}
+.stage .n{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.stage .t{font-weight:700;margin-top:1px}
+.stage .d{font-size:12px;color:var(--muted);margin-top:2px;min-height:16px}
+.stage.ok{background:var(--okbg);border-color:#B6DEC0}.stage.ok .t{color:var(--ok)}
+.stage.bad{background:var(--badbg);border-color:#EBBDB9}.stage.bad .t{color:var(--bad)}
+.stage.run{background:var(--warnbg);border-color:#EBD58A;animation:pulso 1s infinite}
+@keyframes pulso{50%{box-shadow:0 0 0 3px rgba(201,162,39,.35)}}
+.tabs.sub{border-bottom:2px solid var(--line);margin-bottom:12px;flex-wrap:wrap}
+.tabs.sub button{background:transparent;border:0;padding:8px 14px;cursor:pointer;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px}
+.tabs.sub button.active{color:var(--purple);border-bottom-color:var(--gold)}
+.subpanel{display:none;max-height:520px;overflow:auto}
+.subpanel.active{display:block}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.c-reservada{background:#E9E1F7;color:#4B2E83}.c-identificador{background:#DDF1F5;color:#17606F}
+.c-numero{background:#FFF1C2;color:#7A5B00}.c-cadena{background:var(--okbg);color:var(--ok)}
+.c-aritmetico,.c-relacional,.c-logico,.c-asignacion{background:#F3E1EC;color:#8A2B63}.c-delimitador{background:#ECECEC;color:#555}
+.resumen{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.nd{padding:3px 0;font-size:13px}
+.ln{color:var(--muted);font-size:11px;margin-right:6px}
+.kw{color:#4B2E83}
+details{margin:2px 0}
+details>summary{cursor:pointer;padding:2px 0}
+.blk{margin-left:18px;border-left:2px solid var(--line);padding-left:12px}
+.blk .lbl{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;margin:4px 0 2px}
+details.ex{display:inline-block;margin-left:8px;vertical-align:top}
+details.ex>summary{font-size:11px;color:var(--muted)}
+ul.et,ul.et ul{list-style:none;margin:2px 0 2px 14px;padding-left:14px;border-left:1px dashed #C4B8DE}
+ul.et .op{background:#F3E1EC;color:#8A2B63;border-radius:6px;padding:0 7px;font:700 12px Consolas,monospace}
+ul.et .leaf{background:var(--lav);border-radius:6px;padding:0 7px;font:12px Consolas,monospace}
+tr.cur td{background:#FFE9A8!important}
+.errbox{border:1px solid #EBBDB9;background:var(--badbg);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.errbox b{color:var(--bad);font-size:15px}
+.errbox code{display:block;background:#fff;border-radius:6px;padding:6px 8px;margin-top:8px;border:1px solid #EBBDB9}
+.okbox{border:1px solid #B6DEC0;background:var(--okbg);border-radius:10px;padding:10px 14px;margin-bottom:12px;color:var(--ok);font-weight:600}
+tr.hit td{background:var(--badbg)!important;font-weight:600}
+.gram{background:var(--purple-d);color:#EFEAF7;border-radius:10px;padding:14px;font-size:12.5px;line-height:1.55;overflow:auto}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--purple);color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:9}
+.toast.show{opacity:1;transform:none}
+@media (max-width:1050px){.grid2,.workspace,.cols{grid-template-columns:1fr}.ing-form{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">A</div>
+    <div><h1>AromaLex Studio</h1><p>Lenguajes y Aut&oacute;matas 2 &middot; compilador de recetas de perfume</p></div>
+  </div>
+  <nav class="tabs main" id="mainTabs">
+    <button data-tab="recetas" class="active">Recetas</button>
+    <button data-tab="compilador">Proceso del compilador</button>
+    <button data-tab="lenguaje">El lenguaje</button>
+  </nav>
+</header>
+
+<main>
+<!-- ======================= RECETAS ======================= -->
+<section id="tab-recetas" class="panel active">
+  <div class="grid2">
+    <div class="card">
+      <h2>Crear una receta</h2>
+      <label>Nombre de la receta
+        <input id="rNombre" maxlength="31" placeholder="Ej. Parfum" style="width:100%;margin-top:4px">
+      </label>
+      <div class="meter" style="margin-top:14px">
+        <div class="bar"><div id="rBar"></div></div>
+        <div class="txt" id="rContador"></div>
+      </div>
+      <div class="ing-form">
+        <label>Notas
+          <select id="iTipo"><option value="1">Salida</option><option value="2">Corazon</option><option value="3">Base</option></select>
+        </label>
+        <label>Ingrediente <input id="iNombre" maxlength="31" placeholder="Ej. Bergamota"></label>
+        <label>Mililitros (ml) <input id="iMl" type="number" step="0.01" min="0" placeholder="30"></label>
+        <button class="btn primary" id="iAdd">Agregar</button>
+      </div>
+      <div class="msg" id="rMsg"></div>
+      <div id="rLista"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn gold" id="rGuardar" disabled>Guardar receta</button>
+        <button class="btn" id="rLimpiar">Limpiar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="head">
+        <h2>Recetas guardadas <span id="rCount" style="color:var(--muted);font-size:14px"></span></h2>
+        <p style="color:var(--muted);font-size:12px;margin:0">Se guardan automáticamente en este navegador. Usa “Exportar recetas.txt” para tener una copia.</p>
+        <div class="row">
+          <button class="btn small" id="rExport">Exportar recetas.txt</button>
+          <label class="btn small" style="cursor:pointer">Importar<input type="file" id="rImport" accept=".txt" hidden></label>
+        </div>
+      </div>
+      <div id="rGuardadas"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= COMPILADOR ======================= -->
+<section id="tab-compilador" class="panel">
+  <div class="workspace">
+    <div>
+      <div class="card">
+        <div class="toolbar">
+          <select id="ejemplos" title="Ejemplos"></select>
+          <button class="btn primary" id="bRun">&#9654; Ejecutar</button>
+          <button class="btn" id="bStep">&#9197; Paso a paso</button>
+          <button class="btn" id="bAuto">&#9193; Animar</button>
+          <label style="display:flex;align-items:center;gap:6px">Velocidad <input type="range" id="vel" min="1" max="10" value="6"></label>
+          <button class="btn danger" id="bStop" disabled>&#9632; Detener</button>
+        </div>
+        <div class="stepbar" id="stepbar" hidden>
+          <button class="btn primary" id="bNext">Siguiente paso &rarr;</button>
+          <button class="btn" id="bCont">Continuar sin pausas</button>
+          <span id="stepInfo"></span>
+        </div>
+        <div class="editor">
+          <div class="gutter" id="gutter"></div>
+          <div class="edwrap"><div id="hl"></div><textarea id="code" spellcheck="false" wrap="off"></textarea></div>
+        </div>
+      </div>
+      <div class="card"><h3>Variables en vivo</h3><div class="chips" id="vivas"><span class="vacio">Aparecen al ejecutar.</span></div></div>
+      <div class="card">
+        <h3>Consola</h3>
+        <div id="consola"></div>
+        <div class="inrow">
+          <span id="prompt">Entrada (LEER)</span>
+          <input id="entrada" disabled placeholder="Se activa cuando el programa pide un valor">
+          <button class="btn small" id="bEnviar" disabled>Enviar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="pipe" id="pipe"></div>
+      <nav class="tabs sub" id="subTabs">
+        <button data-sub="tokens" class="active">Tokens</button>
+        <button data-sub="arbol">&Aacute;rbol sint&aacute;ctico</button>
+        <button data-sub="simbolos">S&iacute;mbolos</button>
+        <button data-sub="traza">Ejecuci&oacute;n</button>
+        <button data-sub="errores">Errores</button>
+      </nav>
+      <div class="subpanel active" id="sub-tokens"></div>
+      <div class="subpanel" id="sub-arbol"></div>
+      <div class="subpanel" id="sub-simbolos"></div>
+      <div class="subpanel" id="sub-traza"></div>
+      <div class="subpanel" id="sub-errores"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LENGUAJE ======================= -->
+<section id="tab-lenguaje" class="panel">
+  <div class="cols">
+    <div class="card">
+      <h2>Palabras reservadas</h2>
+      <table>
+        <tr><th>Palabra</th><th>Para qu&eacute; sirve</th></tr>
+        <tr><td><code>INICIO ... FIN</code></td><td>Encierra el programa (secuencia de bloque)</td></tr>
+        <tr><td><code>CONST</code></td><td>Constante: <code>CONST VOLUMEN_TOTAL = 100;</code></td></tr>
+        <tr><td><code>VAR</code></td><td>Variable: <code>VAR total = 0;</code></td></tr>
+        <tr><td><code>ARREGLO</code></td><td>Lista de valores: <code>ARREGLO esencias[3];</code></td></tr>
+        <tr><td><code>LEER</code></td><td>Entrada: pide un n&uacute;mero al usuario</td></tr>
+        <tr><td><code>IMPRIMIR</code></td><td>Salida: textos y valores separados por comas</td></tr>
+        <tr><td><code>SI ... ENTONCES ... SINO ... FINSI</code></td><td>Condicional</td></tr>
+        <tr><td><code>MIENTRAS ... HACER ... FINMIENTRAS</code></td><td>Ciclo</td></tr>
+        <tr><td><code>Y</code> &nbsp; <code>O</code></td><td>Operadores l&oacute;gicos</td></tr>
+      </table>
+      <h3 style="margin-top:16px">Operadores, de mayor a menor prioridad</h3>
+      <table>
+        <tr><th>Nivel</th><th>Operadores</th></tr>
+        <tr><td>1</td><td>Par&eacute;ntesis <code>( )</code></td></tr>
+        <tr><td>2</td><td><code>*</code> &nbsp; <code>/</code></td></tr>
+        <tr><td>3</td><td><code>+</code> &nbsp; <code>-</code></td></tr>
+        <tr><td>4</td><td><code>==</code> <code>!=</code> <code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td></tr>
+        <tr><td>5</td><td><code>Y</code> &nbsp; <code>O</code> (mismo nivel, de izquierda a derecha)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Gram&aacute;tica (BNF)</h2>
+      <pre class="gram" id="gramatica"></pre>
+      <h2 style="margin-top:18px">Tabla de errores</h2>
+      <div id="tablaErroresLen"></div>
+    </div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/*CORE-START*/
+/* =====================================================================
+   NUCLEO DEL LENGUAJE (sin nada de pantalla): lexico, sintactico,
+   semantico, ejecucion y logica de recetas.  Misma semantica que el
+   interprete en C (aromalex.c).
+   ===================================================================== */
+const KEYWORDS = ['INICIO','FIN','CONST','VAR','ARREGLO','LEER','IMPRIMIR','SI','ENTONCES','SINO','FINSI','MIENTRAS','HACER','FINMIENTRAS','Y','O'];
+const ERRORES = {
+  E01: 'Carácter o símbolo no reconocido',
+  E02: 'Variable o arreglo usado sin haber sido declarado',
+  E03: 'Error de sintaxis: se esperaba otro símbolo',
+  E04: 'División entre cero',
+  E05: 'Índice de arreglo fuera de rango',
+  E06: 'No se puede modificar una constante',
+  E07: 'El símbolo ya había sido declarado antes',
+  E08: 'Se esperaba un número válido',
+  E09: 'Límite de seguridad: demasiados pasos (posible ciclo infinito)'
+};
+const ERR_FASE = { E01:'Léxico', E02:'Semántico', E03:'Sintáctico', E04:'Ejecución', E05:'Ejecución', E06:'Semántico', E07:'Semántico', E08:'Ejecución', E09:'Ejecución' };
+const ERR_AYUDA = {
+  E01: 'Revisa que el texto solo tenga letras sin acentos, números, comillas bien cerradas y los símbolos del lenguaje.',
+  E02: 'Declara la variable con VAR (o CONST / ARREGLO) antes de usarla.',
+  E03: 'Falta o sobra algún símbolo: revisa punto y coma, paréntesis y palabras de cierre (FINSI, FINMIENTRAS, FIN).',
+  E04: 'El divisor vale cero en el momento de dividir. Revisa el valor de la variable.',
+  E05: 'El índice está fuera del tamaño del arreglo (empieza en 0 y termina en tamaño - 1).',
+  E06: 'Una CONST no puede cambiar. Usa VAR si el valor debe modificarse.',
+  E07: 'Ese nombre ya existe. Usa otro o quita la declaracion repetida.',
+  E08: 'LEER solo acepta números (se permiten decimales con punto).',
+  E09: 'El programa dio demasiadas vueltas. Revisa que la condición del ciclo pueda volverse falsa.'
+};
+const EPS = 1e-9, MAX_ARR = 200, MAX_PASOS = 20000;
+
+class AromaError extends Error {
+  constructor(code, detail, line) { super(code); this.code = code; this.detail = detail || ''; this.line = line || 0; }
+}
+class Abortar extends Error { constructor() { super('ABORT'); this.code = 'ABORT'; } }
+
+function fmt(v) {
+  if (!isFinite(v)) return String(v);
+  return String(Number(v.toPrecision(15)));
+}
+
+/* ---------------- ANALISIS LEXICO ---------------- */
+function tokenizar(src) {
+  const toks = [];
+  let i = 0, line = 1;
+  const n = src.length;
+  const esLetra = c => /[A-Za-z]/.test(c);
+  const esDigito = c => c >= '0' && c <= '9';
+  const dobles = { '==': 'relacional', '<=': 'relacional', '>=': 'relacional', '!=': 'relacional' };
+  const simples = { '+':'aritmetico','-':'aritmetico','*':'aritmetico','/':'aritmetico','=':'asignacion','<':'relacional','>':'relacional',
+                    '(':'delimitador',')':'delimitador','[':'delimitador',']':'delimitador',';':'delimitador',',':'delimitador' };
+  while (i < n) {
+    const c = src[i];
+    if (c === '\n') { line++; i++; continue; }
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === '#') { while (i < n && src[i] !== '\n') i++; continue; }
+    if (esLetra(c)) {
+      let j = i;
+      while (j < n && (esLetra(src[j]) || esDigito(src[j]) || src[j] === '_')) j++;
+      const w = src.slice(i, j);
+      if (KEYWORDS.includes(w)) toks.push({ t: w, v: w, line, cat: (w === 'Y' || w === 'O') ? 'logico' : 'reservada' });
+      else toks.push({ t: 'ID', v: w, line, cat: 'identificador' });
+      i = j; continue;
+    }
+    if (esDigito(c)) {
+      let j = i;
+      while (j < n && esDigito(src[j])) j++;
+      if (src[j] === '.' && esDigito(src[j + 1])) { j++; while (j < n && esDigito(src[j])) j++; }
+      if (j < n && (esLetra(src[j]) || src[j] === '.' || src[j] === '_'))
+        throw new AromaError('E01', 'número mal formado cerca de "' + src.slice(i, j + 1) + '"', line);
+      toks.push({ t: 'NUM', v: src.slice(i, j), n: parseFloat(src.slice(i, j)), line, cat: 'numero' });
+      i = j; continue;
+    }
+    if (c === '"') {
+      let j = i + 1;
+      while (j < n && src[j] !== '"' && src[j] !== '\n') j++;
+      if (j >= n || src[j] !== '"') throw new AromaError('E01', 'cadena sin cerrar (falta la comilla final)', line);
+      toks.push({ t: 'CADENA', v: src.slice(i + 1, j), line, cat: 'cadena' });
+      i = j + 1; continue;
+    }
+    const d = src.slice(i, i + 2);
+    if (dobles[d]) { toks.push({ t: d, v: d, line, cat: dobles[d] }); i += 2; continue; }
+    if (simples[c]) { toks.push({ t: c, v: c, line, cat: simples[c] }); i++; continue; }
+    throw new AromaError('E01', 'carácter no válido "' + c + '"', line);
+  }
+  toks.push({ t: 'EOF', v: 'EOF', line, cat: 'delimitador' });
+  return toks;
+}
+
+/* ---------------- ANALISIS SINTACTICO ---------------- */
+function parsear(toks) {
+  let p = 0;
+  const cur = () => toks[p];
+  const adv = () => { if (p < toks.length - 1) p++; };
+  const err = (detalle, tk) => { throw new AromaError('E03', detalle, (tk || cur()).line); };
+  const expect = (t, nombre) => {
+    if (cur().t !== t) err("se esperaba '" + nombre + "' y se encontró '" + cur().v + "'");
+    const tk = cur(); adv(); return tk;
+  };
+  const FIN_BLOQUE = ['FIN', 'SINO', 'FINSI', 'FINMIENTRAS', 'EOF'];
+
+  function factor() {
+    const t = cur();
+    if (t.t === 'NUM') { adv(); return { k: 'num', v: t.n, txt: t.v, line: t.line }; }
+    if (t.t === '(') { adv(); const e = expresion(); expect(')', ')'); return e; }
+    if (t.t === 'ID') {
+      adv();
+      if (cur().t === '[') { adv(); const ix = expresion(); expect(']', ']'); return { k: 'idx', name: t.v, index: ix, line: t.line }; }
+      return { k: 'id', name: t.v, line: t.line };
+    }
+    return err("se esperaba un número, variable o '('");
+  }
+  function termino() {
+    let l = factor();
+    while (cur().t === '*' || cur().t === '/') { const op = cur().t; const ln = cur().line; adv(); l = { k: 'bin', op, l, r: factor(), line: ln }; }
+    return l;
+  }
+  function exprAr() {
+    let l = termino();
+    while (cur().t === '+' || cur().t === '-') { const op = cur().t; const ln = cur().line; adv(); l = { k: 'bin', op, l, r: termino(), line: ln }; }
+    return l;
+  }
+  function exprRel() {
+    const l = exprAr();
+    if (['==', '!=', '<', '>', '<=', '>='].includes(cur().t)) { const op = cur().t; const ln = cur().line; adv(); return { k: 'bin', op, l, r: exprAr(), line: ln }; }
+    return l;
+  }
+  function expresion() {
+    let l = exprRel();
+    while (cur().t === 'Y' || cur().t === 'O') { const op = cur().t; const ln = cur().line; adv(); l = { k: 'bin', op, l, r: exprRel(), line: ln }; }
+    return l;
+  }
+  function bloque() {
+    const out = [];
+    while (!FIN_BLOQUE.includes(cur().t)) out.push(sentencia());
+    return out;
+  }
+  function nombre(despuesDe) {
+    if (cur().t !== 'ID') err('se esperaba un nombre después de ' + despuesDe);
+    const n = cur().v; adv(); return n;
+  }
+  function sentencia() {
+    const tk = cur(), line = tk.line;
+    switch (tk.t) {
+      case 'CONST': { adv(); const name = nombre('CONST'); expect('=', '='); const e = expresion(); expect(';', ';'); return { k: 'const', name, expr: e, line }; }
+      case 'VAR': { adv(); const name = nombre('VAR'); let e = null; if (cur().t === '=') { adv(); e = expresion(); } expect(';', ';'); return { k: 'var', name, expr: e, line }; }
+      case 'ARREGLO': {
+        adv(); const name = nombre('ARREGLO'); expect('[', '[');
+        if (cur().t !== 'NUM') err('se esperaba el tamaño del arreglo');
+        const size = cur().n; adv(); expect(']', ']'); expect(';', ';');
+        return { k: 'arr', name, size, line };
+      }
+      case 'LEER': {
+        adv(); const name = nombre('LEER'); let ix = null;
+        if (cur().t === '[') { adv(); ix = expresion(); expect(']', ']'); }
+        expect(';', ';'); return { k: 'leer', name, index: ix, line };
+      }
+      case 'IMPRIMIR': {
+        adv(); const items = [];
+        for (;;) {
+          if (cur().t === 'CADENA') { items.push({ k: 'str', v: cur().v }); adv(); }
+          else items.push(expresion());
+          if (cur().t === ',') adv(); else break;
+        }
+        expect(';', ';'); return { k: 'imp', items, line };
+      }
+      case 'SI': {
+        adv(); expect('(', '('); const cond = expresion(); expect(')', ')'); expect('ENTONCES', 'ENTONCES');
+        const entonces = bloque(); let sino = null;
+        if (cur().t === 'SINO') { adv(); sino = bloque(); }
+        expect('FINSI', 'FINSI'); return { k: 'si', cond, entonces, sino, line };
+      }
+      case 'MIENTRAS': {
+        adv(); expect('(', '('); const cond = expresion(); expect(')', ')'); expect('HACER', 'HACER');
+        const cuerpo = bloque(); expect('FINMIENTRAS', 'FINMIENTRAS');
+        return { k: 'mientras', cond, cuerpo, line };
+      }
+      case 'ID': {
+        adv(); let ix = null;
+        if (cur().t === '[') { adv(); ix = expresion(); expect(']', ']'); }
+        expect('=', '='); const valor = expresion(); expect(';', ';');
+        return { k: 'asig', name: tk.v, index: ix, expr: valor, line };
+      }
+      default: return err("token inesperado '" + tk.v + "'");
+    }
+  }
+  expect('INICIO', 'INICIO');
+  const body = bloque();
+  expect('FIN', 'FIN');
+  return { k: 'programa', body };
+}
+
+/* ---------------- ANALISIS SEMANTICO ---------------- */
+function analizarSemantica(ast) {
+  const tabla = new Map();
+  const orden = [];
+  const declarar = (name, tipo, size, line) => {
+    if (tabla.has(name)) throw new AromaError('E07', '"' + name + '" ya se declaró en la línea ' + tabla.get(name).line, line);
+    const s = { name, tipo, size, line };
+    tabla.set(name, s); orden.push(s);
+  };
+  const buscar = (name, line) => {
+    const s = tabla.get(name);
+    if (!s) throw new AromaError('E02', name, line);
+    return s;
+  };
+  const expr = e => {
+    switch (e.k) {
+      case 'id': buscar(e.name, e.line); break;
+      case 'idx': {
+        const s = buscar(e.name, e.line);
+        if (s.tipo !== 'ARREGLO') throw new AromaError('E03', '"' + e.name + '" no es un arreglo', e.line);
+        expr(e.index); break;
+      }
+      case 'bin': expr(e.l); expr(e.r); break;
+    }
+  };
+  const destino = (st) => {
+    const s = buscar(st.name, st.line);
+    if (s.tipo === 'CONST') throw new AromaError('E06', st.name, st.line);
+    if (st.index) {
+      if (s.tipo !== 'ARREGLO') throw new AromaError('E03', '"' + st.name + '" no es un arreglo', st.line);
+      expr(st.index);
+    }
+  };
+  const blq = arr => arr.forEach(stmt);
+  const stmt = st => {
+    switch (st.k) {
+      case 'const': expr(st.expr); declarar(st.name, 'CONST', 0, st.line); break;
+      case 'var': if (st.expr) expr(st.expr); declarar(st.name, 'VAR', 0, st.line); break;
+      case 'arr':
+        if (!Number.isInteger(st.size) || st.size < 1 || st.size > MAX_ARR)
+          throw new AromaError('E03', 'el tamaño del arreglo debe ser un entero entre 1 y ' + MAX_ARR, st.line);
+        declarar(st.name, 'ARREGLO', st.size, st.line); break;
+      case 'asig': destino(st); expr(st.expr); break;
+      case 'leer': destino(st); break;
+      case 'imp': st.items.forEach(it => { if (it.k !== 'str') expr(it); }); break;
+      case 'si': expr(st.cond); blq(st.entonces); if (st.sino) blq(st.sino); break;
+      case 'mientras': expr(st.cond); blq(st.cuerpo); break;
+    }
+  };
+  blq(ast.body);
+  return orden;
+}
+
+/* ---------------- TEXTO DE EXPRESIONES ---------------- */
+const PREC = { 'Y': 1, 'O': 1, '==': 2, '!=': 2, '<': 2, '>': 2, '<=': 2, '>=': 2, '+': 3, '-': 3, '*': 4, '/': 4 };
+function exprTexto(e, padre) {
+  padre = padre || 0;
+  switch (e.k) {
+    case 'num': return e.txt;
+    case 'str': return '"' + e.v + '"';
+    case 'id': return e.name;
+    case 'idx': return e.name + '[' + exprTexto(e.index) + ']';
+    case 'bin': {
+      const pr = PREC[e.op];
+      const s = exprTexto(e.l, pr) + ' ' + e.op + ' ' + exprTexto(e.r, pr + 0.5);
+      return pr < padre ? '(' + s + ')' : s;
+    }
+  }
+  return '?';
+}
+
+function contarNodos(ast) {
+  let n = 0;
+  const ex = e => { n++; if (e.k === 'bin') { ex(e.l); ex(e.r); } else if (e.k === 'idx') ex(e.index); };
+  const st = s => {
+    n++;
+    ['expr', 'cond', 'index'].forEach(k => { if (s[k]) ex(s[k]); });
+    if (s.items) s.items.forEach(ex);
+    ['entonces', 'sino', 'cuerpo'].forEach(k => { if (s[k]) s[k].forEach(st); });
+  };
+  ast.body.forEach(st);
+  return n + 1;
+}
+
+/* ---------------- COMPILAR (las 3 fases) ---------------- */
+function compilar(src) {
+  const r = { tokens: null, ast: null, simbolos: null, nodos: 0, error: null, estado: { lexico: 'pend', sintactico: 'pend', semantico: 'pend' } };
+  const falla = (e, fase) => {
+    if (!(e instanceof AromaError)) throw e;
+    r.error = { code: e.code, detail: e.detail, line: e.line, fase: ERR_FASE[e.code] };
+    r.estado[fase] = 'bad'; return r;
+  };
+  try { r.tokens = tokenizar(src); r.estado.lexico = 'ok'; } catch (e) { return falla(e, 'lexico'); }
+  try { r.ast = parsear(r.tokens); r.nodos = contarNodos(r.ast); r.estado.sintactico = 'ok'; } catch (e) { return falla(e, 'sintactico'); }
+  try { r.simbolos = analizarSemantica(r.ast); r.estado.semantico = 'ok'; } catch (e) { return falla(e, 'semantico'); }
+  return r;
+}
+
+/* ---------------- EJECUCION ---------------- */
+async function ejecutar(ast, io, src) {
+  const env = new Map();
+  const lineas = src.split('\n');
+  let pasos = 0;
+  const snap = () => [...env.entries()].map(([name, s]) => ({ name, tipo: s.tipo, valor: s.tipo === 'ARREGLO' ? s.arr.slice() : s.valor }));
+
+  async function paso(st, efecto) {
+    pasos++;
+    if (pasos > MAX_PASOS) throw new AromaError('E09', 'se superaron ' + MAX_PASOS + ' pasos', st.line);
+    await io.paso({ n: pasos, line: st.line, instr: (lineas[st.line - 1] || '').trim(), efecto, vars: snap() });
+  }
+
+  function ev(e) {
+    switch (e.k) {
+      case 'num': return e.v;
+      case 'id': { const s = env.get(e.name); return s.tipo === 'ARREGLO' ? 0 : s.valor; }
+      case 'idx': {
+        const s = env.get(e.name); const i = Math.trunc(ev(e.index));
+        if (i < 0 || i >= s.size) throw new AromaError('E05', e.name + '[' + i + '] fuera de rango (tamaño ' + s.size + ')', e.line);
+        return s.arr[i];
+      }
+      case 'bin': {
+        const a = ev(e.l), b = ev(e.r);
+        switch (e.op) {
+          case '+': return a + b;
+          case '-': return a - b;
+          case '*': return a * b;
+          case '/': if (Math.abs(b) < EPS) throw new AromaError('E04', exprTexto(e), e.line); return a / b;
+          case '==': return Math.abs(a - b) < EPS ? 1 : 0;
+          case '!=': return Math.abs(a - b) >= EPS ? 1 : 0;
+          case '<': return a < b - EPS ? 1 : 0;
+          case '>': return a > b + EPS ? 1 : 0;
+          case '<=': return a <= b + EPS ? 1 : 0;
+          case '>=': return a >= b - EPS ? 1 : 0;
+          case 'Y': return (a !== 0 && b !== 0) ? 1 : 0;
+          case 'O': return (a !== 0 || b !== 0) ? 1 : 0;
+        }
+      }
+    }
+    return 0;
+  }
+  function posicion(st) {
+    const s = env.get(st.name);
+    const i = Math.trunc(ev(st.index));
+    if (i < 0 || i >= s.size) throw new AromaError('E05', st.name + '[' + i + '] fuera de rango (tamaño ' + s.size + ')', st.line);
+    return i;
+  }
+  async function bloque(arr) { for (const st of arr) await sentencia(st); }
+  async function sentencia(st) {
+    switch (st.k) {
+      case 'const': { const v = ev(st.expr); env.set(st.name, { tipo: 'CONST', valor: v }); await paso(st, st.name + ' = ' + fmt(v) + '  (constante)'); break; }
+      case 'var': { const v = st.expr ? ev(st.expr) : 0; env.set(st.name, { tipo: 'VAR', valor: v }); await paso(st, st.name + ' = ' + fmt(v)); break; }
+      case 'arr': { env.set(st.name, { tipo: 'ARREGLO', size: st.size, arr: new Array(st.size).fill(0) }); await paso(st, st.name + ' reservado con ' + st.size + ' posiciones (todas en 0)'); break; }
+      case 'asig': {
+        const s = env.get(st.name);
+        if (st.index) { const i = posicion(st); const v = ev(st.expr); s.arr[i] = v; await paso(st, st.name + '[' + i + '] = ' + fmt(v)); }
+        else { const v = ev(st.expr); s.valor = v; await paso(st, st.name + ' = ' + fmt(v)); }
+        break;
+      }
+      case 'leer': {
+        const s = env.get(st.name);
+        const i = st.index ? posicion(st) : null;
+        const etiqueta = st.name + (i !== null ? '[' + i + ']' : '');
+        const crudo = await io.leer(etiqueta);
+        if (!/^\s*[-+]?(\d+(\.\d*)?|\.\d+)\s*$/.test(crudo)) throw new AromaError('E08', 'se recibió "' + String(crudo).trim() + '"', st.line);
+        const v = parseFloat(crudo);
+        if (i !== null) s.arr[i] = v; else s.valor = v;
+        await paso(st, etiqueta + ' \u2190 ' + fmt(v) + '  (valor leído)');
+        break;
+      }
+      case 'imp': {
+        const partes = st.items.map(it => it.k === 'str' ? it.v : fmt(ev(it)));
+        const texto = partes.join(' ');
+        io.salida(texto);
+        await paso(st, 'imprime: ' + texto);
+        break;
+      }
+      case 'si': {
+        const c = ev(st.cond) !== 0;
+        await paso(st, 'condición ( ' + exprTexto(st.cond) + ' ) = ' + (c ? 'VERDADERA: ejecuta ENTONCES' : (st.sino ? 'FALSA: ejecuta SINO' : 'FALSA: salta el bloque')));
+        if (c) await bloque(st.entonces); else if (st.sino) await bloque(st.sino);
+        break;
+      }
+      case 'mientras': {
+        let vuelta = 0;
+        for (;;) {
+          const c = ev(st.cond) !== 0;
+          await paso(st, 'condición ( ' + exprTexto(st.cond) + ' ) = ' + (c ? 'VERDADERA: entra al ciclo (vuelta ' + (++vuelta) + ')' : 'FALSA: sale del ciclo'));
+          if (!c) break;
+          await bloque(st.cuerpo);
+        }
+        break;
+      }
+    }
+  }
+  await bloque(ast.body);
+  return { pasos, vars: snap() };
+}
+
+/* ---------------- RECETAS ---------------- */
+const MAX_ING = 12;
+const NOMBRE_TIPO = ['', 'SALIDA', 'CORAZON', 'BASE'];
+const redondear2 = v => Math.round(v * 100) / 100;
+function limpiarNombre(s) { return String(s).replace(/[;:"]/g, '-').trim(); }
+function totalReceta(ings) { return redondear2(ings.reduce((a, i) => a + i.ml, 0)); }
+function validarIngrediente(ings, tipo, crudo) {
+  const total = totalReceta(ings), faltan = redondear2(100 - total), ml = redondear2(crudo);
+  const hayEsencia = ings.some(i => i.tipo === 1);
+  if (ml < 0.01) return 'La cantidad debe ser mayor que 0 (mínimo 0.01).';
+  if (ml > faltan + EPS) return 'Te pasas del frasco. Máximo permitido: ' + fmt(faltan) + ' ml';
+  const cierra = Math.abs(total + ml - 100) < EPS;
+  if (!hayEsencia && tipo !== 1 && cierra) return 'Con eso se llena el frasco sin ninguna nota de salida. Agrega primero una nota de salida.';
+  if (ings.length === MAX_ING - 1 && !cierra) return 'Es el último ingrediente permitido (' + MAX_ING + '): debe completar exactamente ' + fmt(faltan) + ' ml.';
+  return null;
+}
+function generarCodigo(r) {
+  let s = 'INICIO\n  CONST VOLUMEN_TOTAL = 100;\n  VAR total = 0;\n  VAR notasSalida = 0;\n';
+  s += '  IMPRIMIR "Receta:", "' + r.nombre + '";\n';
+  for (const i of r.ings) {
+    if (i.tipo === 1) s += '  notasSalida = notasSalida + 1;\n';
+    s += '  total = total + ' + i.ml.toFixed(2) + ';\n';
+    s += '  IMPRIMIR "  ' + i.nombre + ' (' + NOMBRE_TIPO[i.tipo] + '):", ' + i.ml.toFixed(2) + ', "ml | acumulado:", total, "ml";\n';
+  }
+  s += '  SI (notasSalida < 1) ENTONCES\n    IMPRIMIR "Advertencia: la receta no tiene notas de salida";\n  FINSI\n';
+  s += '  SI (total == VOLUMEN_TOTAL) ENTONCES\n';
+  s += '    IMPRIMIR "Resultado: RECETA VALIDA, suma", total, "ml";\n';
+  s += '  SINO\n    SI (total < VOLUMEN_TOTAL) ENTONCES\n';
+  s += '      IMPRIMIR "Resultado: RECETA INVALIDA, faltan", VOLUMEN_TOTAL - total, "ml";\n';
+  s += '    SINO\n      IMPRIMIR "Resultado: RECETA INVALIDA, sobran", total - VOLUMEN_TOTAL, "ml";\n';
+  s += '    FINSI\n  FINSI\nFIN\n';
+  return s;
+}
+function recetasATexto(lista) {
+  return lista.map(r => r.nombre + r.ings.map(i => ';' + i.tipo + ':' + i.nombre + ':' + i.ml.toFixed(2)).join('')).join('\n') + '\n';
+}
+function textoARecetas(txt) {
+  const out = [];
+  for (const linea of txt.split(/\r?\n/)) {
+    const l = linea.trim();
+    if (!l || l[0] === '#') continue;
+    const partes = l.split(';');
+    const nombre = limpiarNombre(partes[0]).slice(0, 31);
+    const ings = []; let ok = nombre.length > 0;
+    for (const p of partes.slice(1, MAX_ING + 1)) {
+      const m = /^(\d):([^:]+):([0-9.]+)$/.exec(p);
+      if (!m || +m[1] < 1 || +m[1] > 3 || !(parseFloat(m[3]) > 0)) { ok = false; break; }
+      ings.push({ tipo: +m[1], nombre: limpiarNombre(m[2]).slice(0, 31), ml: parseFloat(m[3]) });
+    }
+    if (ok && ings.length) out.push({ nombre, ings });
+  }
+  return out;
+}
+const EJEMPLOS = [
+  { t: 'Receta con contador de ml (ejemplo del proyecto)', c:
+'INICIO\n  CONST VOLUMEN_TOTAL = 100;\n  VAR total = 0;\n  VAR ml = 0;\n  VAR n = 1;\n\n  IMPRIMIR "Receta de perfume: llena el frasco de", VOLUMEN_TOTAL, "ml";\n\n  MIENTRAS (total < VOLUMEN_TOTAL) HACER\n    IMPRIMIR "Esencia", n, "- faltan", VOLUMEN_TOTAL - total, "ml";\n    LEER ml;\n    SI (ml <= 0) ENTONCES\n      IMPRIMIR "La cantidad debe ser mayor que 0.";\n    SINO\n      SI (total + ml > VOLUMEN_TOTAL) ENTONCES\n        IMPRIMIR "Te pasas del frasco. Maximo permitido:", VOLUMEN_TOTAL - total, "ml";\n      SINO\n        total = total + ml;\n        n = n + 1;\n        IMPRIMIR "Llevas", total, "ml de", VOLUMEN_TOTAL, "ml";\n      FINSI\n    FINSI\n  FINMIENTRAS\n\n  IMPRIMIR "Receta completa. Esencias usadas:", n - 1, "- total:", total, "ml";\nFIN\n' },
+  { t: 'Operaciones con prioridad', c:
+'INICIO\n  VAR r = 0;\n  r = (3 + 2) * 4 - 10 / 2;\n  IMPRIMIR "Resultado:", r;\nFIN\n' },
+  { t: 'Condicional con Y (pureza y temperatura)', c:
+'INICIO\n  VAR pureza = 0;\n  VAR temperatura = 0;\n  LEER pureza;\n  LEER temperatura;\n  SI (pureza >= 80 Y temperatura < 30) ENTONCES\n    IMPRIMIR "Mezcla apta para embotellar";\n  SINO\n    IMPRIMIR "Mezcla rechazada";\n  FINSI\nFIN\n' },
+  { t: 'Ciclo y arreglo', c:
+'INICIO\n  ARREGLO numeros[5];\n  VAR i = 0;\n  MIENTRAS (i < 5) HACER\n    numeros[i] = i * 10;\n    i = i + 1;\n  FINMIENTRAS\n  i = 0;\n  MIENTRAS (i < 5) HACER\n    IMPRIMIR "numeros[", i, "] =", numeros[i];\n    i = i + 1;\n  FINMIENTRAS\nFIN\n' },
+  { t: 'Error E02: variable sin declarar', c: 'INICIO\n  VAR x = 5;\n  IMPRIMIR y;\nFIN\n' },
+  { t: 'Error E03: falta un punto y coma', c: 'INICIO\n  VAR x = 5\n  IMPRIMIR x;\nFIN\n' },
+  { t: 'Error E04: division entre cero', c: 'INICIO\n  VAR a = 10;\n  VAR b = 0;\n  IMPRIMIR a / b;\nFIN\n' },
+  { t: 'Error E06: modificar una constante', c: 'INICIO\n  CONST PI = 3;\n  PI = 4;\nFIN\n' },
+  { t: 'Error E05: indice fuera de rango', c: 'INICIO\n  ARREGLO datos[3];\n  datos[0] = 1;\n  datos[5] = 9;\nFIN\n' },
+];
+const GRAMATICA =
+'programa     ::= "INICIO" { sentencia } "FIN"\n' +
+'sentencia    ::= declaracion | asignacion | leer | imprimir\n' +
+'               | condicional | ciclo\n' +
+'declaracion  ::= "CONST" ID "=" expresion ";"\n' +
+'               | "VAR" ID [ "=" expresion ] ";"\n' +
+'               | "ARREGLO" ID "[" NUM "]" ";"\n' +
+'asignacion   ::= ID [ "[" expresion "]" ] "=" expresion ";"\n' +
+'leer         ::= "LEER" ID [ "[" expresion "]" ] ";"\n' +
+'imprimir     ::= "IMPRIMIR" item { "," item } ";"\n' +
+'item         ::= CADENA | expresion\n' +
+'condicional  ::= "SI" "(" expresion ")" "ENTONCES" { sentencia }\n' +
+'                 [ "SINO" { sentencia } ] "FINSI"\n' +
+'ciclo        ::= "MIENTRAS" "(" expresion ")" "HACER"\n' +
+'                 { sentencia } "FINMIENTRAS"\n' +
+'expresion    ::= exprRel { ( "Y" | "O" ) exprRel }\n' +
+'exprRel      ::= exprAr [ opRel exprAr ]\n' +
+'exprAr       ::= termino { ( "+" | "-" ) termino }\n' +
+'termino      ::= factor { ( "*" | "/" ) factor }\n' +
+'factor       ::= NUM | ID [ "[" expresion "]" ] | "(" expresion ")"\n' +
+'opRel        ::= "==" | "!=" | "<" | ">" | "<=" | ">="';
+if (typeof module !== 'undefined') module.exports = { tokenizar, parsear, analizarSemantica, compilar, ejecutar, generarCodigo, validarIngrediente, recetasATexto, textoARecetas, exprTexto, fmt, EJEMPLOS, AromaError, ERRORES, totalReceta, redondear2, limpiarNombre };
+/*CORE-END*/
+
+/* =====================================================================
+   INTERFAZ
+   ===================================================================== */
+if (typeof document !== 'undefined') (function () {
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2400); }
+
+/* ---------- pestañas principales ---------- */
+function irA(tab) {
+  $$('#mainTabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+}
+$$('#mainTabs button').forEach(b => b.onclick = () => irA(b.dataset.tab));
+function irSub(sub) {
+  $$('#subTabs button').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+  $$('.subpanel').forEach(p => p.classList.toggle('active', p.id === 'sub-' + sub));
+}
+$$('#subTabs button').forEach(b => b.onclick = () => irSub(b.dataset.sub));
+
+/* =================================================================
+   RECETAS
+   ================================================================= */
+const KEY = 'aromalex_recetas_v1';
+const Store = {
+  load() {
+    const t = localStorage.getItem(KEY);
+    return t === null ? null : JSON.parse(t);
+  },
+  save(l) { localStorage.setItem(KEY, JSON.stringify(l)); }
+};
+function errorAlmacenamientoRecetas(error) {
+  console.error('No se pudo acceder al almacenamiento de recetas del navegador.', error);
+  toast('No se pudo acceder o guardar las recetas. Exporta una copia o revisa el almacenamiento del navegador.');
+}
+let guardadas = [];
+let errorAlmacenamiento = null;
+try {
+  guardadas = Store.load();
+} catch (error) {
+  errorAlmacenamiento = error;
+}
+if (guardadas === null) {
+  guardadas = [{ nombre: 'Citrico (ejemplo)', ings: [
+    { tipo: 1, nombre: 'Bergamota', ml: 30 }, { tipo: 2, nombre: 'Almizcle', ml: 10 }, { tipo: 3, nombre: 'Alcohol', ml: 60 }] }];
+  errorAlmacenamiento = null;
+  try { Store.save(guardadas); } catch (error) { errorAlmacenamiento = error; }
+}
+if (errorAlmacenamiento) {
+  errorAlmacenamientoRecetas(errorAlmacenamiento);
+}
+let ings = [];
+function guardarRecetas(nuevas) {
+  try {
+    Store.save(nuevas);
+    guardadas = nuevas;
+    return true;
+  } catch (error) {
+    errorAlmacenamientoRecetas(error);
+    return false;
+  }
+}
+
+function renderForm() {
+  const total = totalReceta(ings), faltan = redondear2(100 - total);
+  const bar = $('#rBar');
+  bar.style.width = Math.min(100, total) + '%';
+  bar.className = Math.abs(total - 100) < EPS ? 'full' : '';
+  $('#rContador').textContent = 'Llevas ' + fmt(total) + ' ml de 100 ml  \u00b7  faltan ' + fmt(faltan) + ' ml';
+  const cont = $('#rLista');
+  if (!ings.length) cont.innerHTML = '<div class="vacio">Aún no hay ingredientes. Agrega el primero arriba.</div>';
+  else cont.innerHTML = '<table><tr><th>Notas</th><th>Ingrediente</th><th class="num">ml</th><th class="num">Acumulado</th><th></th></tr>' +
+    (() => { let acc = 0; return ings.map((i, k) => { acc = redondear2(acc + i.ml);
+      return '<tr><td><span class="tag t' + i.tipo + '">' + NOMBRE_TIPO[i.tipo] + '</span></td><td>' + esc(i.nombre) + '</td><td class="num">' + fmt(i.ml) +
+        '</td><td class="num">' + fmt(acc) + '</td><td class="num"><button class="btn small" data-q="' + k + '">Quitar</button></td></tr>'; }).join(''); })() + '</table>';
+  cont.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { ings.splice(+b.dataset.q, 1); renderForm(); mensaje(''); });
+  $('#iAdd').disabled = Math.abs(total - 100) < EPS || ings.length >= MAX_ING;
+  $('#rGuardar').disabled = !(Math.abs(total - 100) < EPS);
+}
+function mensaje(t, ok) { const m = $('#rMsg'); m.textContent = t; m.className = 'msg' + (ok ? ' ok' : ''); }
+function agregar() {
+  const tipo = +$('#iTipo').value, nombre = limpiarNombre($('#iNombre').value), crudo = parseFloat($('#iMl').value);
+  if (!nombre) return mensaje('El nombre del ingrediente no puede estar vacío.');
+  if (nombre.length > 31) return mensaje('Máximo 31 caracteres.');
+  if (!isFinite(crudo)) return mensaje('Escribe un número válido en ml.');
+  const e = validarIngrediente(ings, tipo, crudo);
+  if (e) return mensaje(e);
+  ings.push({ tipo, nombre, ml: redondear2(crudo) });
+  $('#iNombre').value = ''; $('#iMl').value = ''; mensaje(''); renderForm(); $('#iNombre').focus();
+}
+function guardar() {
+  const nombre = limpiarNombre($('#rNombre').value);
+  if (!nombre) return mensaje('Ponle un nombre a la receta.');
+  if (nombre.length > 31) return mensaje('El nombre admite máximo 31 caracteres.');
+  if (guardadas.some(r => r.nombre.toLowerCase() === nombre.toLowerCase())) return mensaje('Ya existe una receta con ese nombre.');
+  if (!ings.some(i => i.tipo === 1)) return mensaje('La receta necesita al menos una nota de salida.');
+  if (Math.abs(totalReceta(ings) - 100) >= EPS) return mensaje('La receta debe sumar exactamente 100 ml.');
+  const nuevas = [...guardadas, { nombre, ings: ings.map(i => ({ ...i })) }];
+  if (!guardarRecetas(nuevas)) return;
+  ings = []; $('#rNombre').value = ''; mensaje('Receta guardada.', true); renderForm(); renderGuardadas(); toast('Receta guardada: ' + nombre);
+}
+$('#iAdd').onclick = agregar;
+$('#rGuardar').onclick = guardar;
+$('#rLimpiar').onclick = () => { ings = []; $('#rNombre').value = ''; mensaje(''); renderForm(); };
+['iNombre', 'iMl'].forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') agregar(); }));
+
+function renderGuardadas() {
+  $('#rCount').textContent = '(' + guardadas.length + ')';
+  const cont = $('#rGuardadas');
+  if (!guardadas.length) { cont.innerHTML = '<div class="vacio">Todavía no hay recetas. Crea una a la izquierda.</div>'; return; }
+  cont.innerHTML = guardadas.map((r, k) => {
+    const total = totalReceta(r.ings), valida = Math.abs(total - 100) < EPS;
+    return '<div class="receta"><div class="rh"><b>' + esc(r.nombre) + '</b><span class="tag ' + (valida ? 't3' : 't1') + '" style="' + (valida ? 'background:var(--okbg);color:var(--ok)' : 'background:var(--badbg);color:var(--bad)') + '">' + fmt(total) + ' ml' + (valida ? ' \u2713' : ' \u2717') + '</span></div>' +
+      '<table>' + r.ings.map(i => '<tr><td style="width:100px"><span class="tag t' + i.tipo + '">' + NOMBRE_TIPO[i.tipo] + '</span></td><td>' + esc(i.nombre) + '</td><td class="num">' + fmt(i.ml) + ' ml</td></tr>').join('') + '</table>' +
+      '<div class="row" style="margin-top:10px"><button class="btn small primary" data-paso="' + k + '">Ver el proceso paso a paso</button><button class="btn small" data-abrir="' + k + '">Abrir en el compilador</button><button class="btn small" data-cod="' + k + '">Ver código</button><button class="btn small danger" data-del="' + k + '">Eliminar</button></div>' +
+      '<pre hidden id="cod' + k + '"></pre></div>';
+  }).join('');
+  cont.querySelectorAll('[data-cod]').forEach(b => b.onclick = () => { const p = $('#cod' + b.dataset.cod); p.textContent = generarCodigo(guardadas[+b.dataset.cod]); p.hidden = !p.hidden; });
+  cont.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => abrirReceta(+b.dataset.abrir, false));
+  cont.querySelectorAll('[data-paso]').forEach(b => b.onclick = () => abrirReceta(+b.dataset.paso, true));
+  cont.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    const indice = +b.dataset.del, r = guardadas[indice];
+    const nuevas = guardadas.filter((_, k) => k !== indice);
+    if (!guardarRecetas(nuevas)) return;
+    renderGuardadas(); toast('Eliminada: ' + r.nombre);
+  });
+}
+function abrirReceta(k, correr) {
+  $('#code').value = generarCodigo(guardadas[k]);
+  limpiarResultados(true); actualizarEditor(); irA('compilador');
+  if (correr) lanzar('step');
+}
+$('#rExport').onclick = () => {
+  const blob = new Blob([recetasATexto(guardadas)], { type: 'text/plain' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'recetas.txt'; document.body.appendChild(a); a.click(); a.remove();
+};
+$('#rImport').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const importadas = textoARecetas(String(rd.result));
+    const nuevas = [...guardadas]; let n = 0;
+    importadas.forEach(r => { if (!nuevas.some(g => g.nombre.toLowerCase() === r.nombre.toLowerCase())) { nuevas.push(r); n++; } });
+    if (!guardarRecetas(nuevas)) return;
+    renderGuardadas(); toast(n + ' receta(s) importada(s)');
+  };
+  rd.onerror = () => {
+    console.error('No se pudo leer el archivo de recetas.', rd.error);
+    toast('No se pudo leer el archivo de recetas.');
+  };
+  rd.readAsText(f); e.target.value = '';
+};
+
+/* =================================================================
+   COMPILADOR: editor
+   ================================================================= */
+const code = $('#code'), hl = $('#hl'), gutter = $('#gutter');
+const S = { c: null, trace: [], snap: [], prev: {}, runner: null, errLine: 0, curLine: 0, error: null, pasos: 0 };
+
+function actualizarEditor() {
+  const n = code.value.split('\n').length;
+  gutter.textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n');
+  hl.innerHTML = Array.from({ length: n }, (_, i) => '<div class="' + (i + 1 === S.errLine ? 'err' : (i + 1 === S.curLine ? 'cur' : '')) + '"></div>').join('');
+  sincronizar();
+}
+function sincronizar() { hl.scrollTop = code.scrollTop; hl.scrollLeft = code.scrollLeft; gutter.scrollTop = code.scrollTop; }
+function verLinea(l) {
+  const top = (l - 1) * 20, h = code.clientHeight;
+  if (top < code.scrollTop + 20 || top > code.scrollTop + h - 50) code.scrollTop = Math.max(0, top - h / 2);
+  sincronizar();
+}
+code.addEventListener('input', () => { S.errLine = 0; S.curLine = 0; actualizarEditor(); });
+code.addEventListener('scroll', sincronizar);
+code.addEventListener('keydown', e => {
+  if (e.key === 'Tab') { e.preventDefault(); const s = code.selectionStart; code.setRangeText('  ', s, code.selectionEnd, 'end'); actualizarEditor(); }
+});
+const sel = $('#ejemplos');
+EJEMPLOS.forEach((e, i) => { const o = document.createElement('option'); o.value = i; o.textContent = e.t; sel.appendChild(o); });
+sel.onchange = () => { code.value = EJEMPLOS[+sel.value].c; limpiarResultados(true); actualizarEditor(); };
+code.value = EJEMPLOS[0].c;
+
+/* ---------- consola ---------- */
+const cons = $('#consola');
+function linea(t, cls) { const d = document.createElement('div'); if (cls) d.className = cls; d.textContent = t; cons.appendChild(d); cons.scrollTop = cons.scrollHeight; }
+function limpiarConsola() { cons.innerHTML = ''; }
+function pedirValor(etiqueta) {
+  return new Promise((resolve, reject) => {
+    const inp = $('#entrada'), btn = $('#bEnviar');
+    linea('Escribe el valor de ' + etiqueta + ':', 'ask');
+    $('#prompt').textContent = etiqueta + ' =';
+    inp.disabled = false; btn.disabled = false; inp.value = ''; inp.focus();
+    const fin = valor => { inp.disabled = true; btn.disabled = true; $('#prompt').textContent = 'Entrada (LEER)'; S.runner.pendiente = null; linea('> ' + valor, 'sys'); inp.value = ''; resolve(valor); };
+    S.runner.pendiente = { cancelar: () => { inp.disabled = true; btn.disabled = true; reject(new Abortar()); } };
+    S.runner.enviar = () => fin(inp.value);
+  });
+}
+$('#bEnviar').onclick = () => S.runner && S.runner.enviar && S.runner.enviar();
+$('#entrada').addEventListener('keydown', e => { if (e.key === 'Enter') $('#bEnviar').click(); });
+
+/* ---------- pipeline ---------- */
+function renderPipe(estado) {
+  const e = estado || {};
+  const c = S.c;
+  const et = (clase, n, titulo, d) => '<div class="stage ' + (clase || '') + '"><div class="n">' + n + '</div><div class="t">' + titulo + '</div><div class="d">' + d + '</div></div>';
+  $('#pipe').innerHTML =
+    et(c ? 'ok' : '', 'Entrada', 'Código fuente', c ? code.value.split('\n').length + ' líneas' : '') +
+    et(e.lexico, 'Fase 1', 'Léxico', c && c.tokens ? (c.tokens.length - 1) + ' tokens' : '') +
+    et(e.sintactico, 'Fase 2', 'Sintáctico', c && c.ast ? c.nodos + ' nodos' : '') +
+    et(e.semantico, 'Fase 3', 'Semántico', c && c.simbolos ? c.simbolos.length + ' símbolos' : '') +
+    et(e.ejecucion, 'Fase 4', 'Ejecución', S.pasos ? S.pasos + ' pasos' : '');
+}
+
+/* ---------- tokens ---------- */
+function renderTokens() {
+  const p = $('#sub-tokens'); const c = S.c;
+  if (!c || !c.tokens) { p.innerHTML = '<div class="vacio">Ejecuta un programa para ver cómo el analizador léxico lo convierte en tokens.</div>'; return; }
+  const cuenta = {}; c.tokens.slice(0, -1).forEach(t => cuenta[t.cat] = (cuenta[t.cat] || 0) + 1);
+  p.innerHTML = '<div class="resumen">' + Object.entries(cuenta).map(([k, v]) => '<span class="pill c-' + k + '">' + k + ': ' + v + '</span>').join('') + '</div>' +
+    '<table><tr><th>#</th><th>Línea</th><th>Tipo</th><th>Texto</th></tr>' +
+    c.tokens.slice(0, -1).map((t, i) => '<tr><td>' + (i + 1) + '</td><td>' + t.line + '</td><td><span class="pill c-' + t.cat + '">' + t.cat + '</span></td><td><code>' + esc(t.t === 'CADENA' ? '"' + t.v + '"' : t.v) + '</code></td></tr>').join('') + '</table>';
+}
+
+/* ---------- arbol ---------- */
+const kw = t => '<b class="kw">' + t + '</b>';
+function exprTree(e) {
+  if (e.k === 'bin') return '<li><span class="op">' + esc(e.op) + '</span><ul class="et">' + exprTree(e.l) + exprTree(e.r) + '</ul></li>';
+  if (e.k === 'idx') return '<li><span class="leaf">' + esc(e.name) + '[ ]</span><ul class="et">' + exprTree(e.index) + '</ul></li>';
+  return '<li><span class="leaf">' + esc(e.k === 'num' ? e.txt : e.name) + '</span></li>';
+}
+const exprDet = e => (e.k === 'bin' || e.k === 'idx') ? '<details class="ex"><summary>árbol de la expresión</summary><ul class="et">' + exprTree(e) + '</ul></details>' : '';
+const L = s => '<span class="ln">l.' + s.line + '</span>';
+function bloqueHTML(a) { return a.length ? a.map(stmtHTML).join('') : '<div class="vacio">(vacio)</div>'; }
+function stmtHTML(s) {
+  const t = x => esc(exprTexto(x));
+  switch (s.k) {
+    case 'const': return '<div class="nd">' + L(s) + kw('CONST') + ' ' + s.name + ' = ' + t(s.expr) + exprDet(s.expr) + '</div>';
+    case 'var': return '<div class="nd">' + L(s) + kw('VAR') + ' ' + s.name + (s.expr ? ' = ' + t(s.expr) + exprDet(s.expr) : '') + '</div>';
+    case 'arr': return '<div class="nd">' + L(s) + kw('ARREGLO') + ' ' + s.name + '[' + s.size + ']</div>';
+    case 'asig': return '<div class="nd">' + L(s) + 'asignacion: ' + s.name + (s.index ? '[' + t(s.index) + ']' : '') + ' = ' + t(s.expr) + exprDet(s.expr) + '</div>';
+    case 'leer': return '<div class="nd">' + L(s) + kw('LEER') + ' ' + s.name + (s.index ? '[' + t(s.index) + ']' : '') + '</div>';
+    case 'imp': return '<div class="nd">' + L(s) + kw('IMPRIMIR') + ' ' + s.items.map(t).join(', ') + '</div>';
+    case 'si': return '<details open><summary>' + L(s) + kw('SI') + ' ( ' + t(s.cond) + ' ) ' + kw('ENTONCES') + exprDet(s.cond) + '</summary><div class="blk"><div class="lbl">entonces</div>' + bloqueHTML(s.entonces) + (s.sino ? '<div class="lbl">sino</div>' + bloqueHTML(s.sino) : '') + '</div></details>';
+    case 'mientras': return '<details open><summary>' + L(s) + kw('MIENTRAS') + ' ( ' + t(s.cond) + ' ) ' + kw('HACER') + exprDet(s.cond) + '</summary><div class="blk"><div class="lbl">cuerpo del ciclo</div>' + bloqueHTML(s.cuerpo) + '</div></details>';
+  }
+  return '';
+}
+function renderArbol() {
+  const p = $('#sub-arbol'); const c = S.c;
+  if (!c || !c.ast) { p.innerHTML = '<div class="vacio">' + (c && c.error ? 'El analizador sintáctico no alcanzó a construir el árbol.' : 'Ejecuta un programa para ver su árbol sintáctico.') + '</div>'; return; }
+  p.innerHTML = '<details open><summary><b>programa</b> &nbsp;<span style="color:var(--muted);font-size:12px">' + c.nodos + ' nodos</span></summary><div class="blk">' + bloqueHTML(c.ast.body) + '</div></details>';
+}
+
+/* ---------- simbolos y variables ---------- */
+function valorTxt(v) { return Array.isArray(v) ? '[' + v.map(fmt).join(', ') + ']' : fmt(v); }
+function renderSimbolos() {
+  const p = $('#sub-simbolos'); const c = S.c;
+  if (!c || !c.simbolos) { p.innerHTML = '<div class="vacio">' + (c && c.error ? 'La tabla de símbolos no se completó por el error.' : 'Ejecuta un programa para ver su tabla de símbolos.') + '</div>'; return; }
+  const val = {}; S.snap.forEach(s => val[s.name] = s.valor);
+  p.innerHTML = '<table><tr><th>Nombre</th><th>Tipo</th><th>Tamaño</th><th>Declarado en</th><th>Valor actual</th></tr>' +
+    c.simbolos.map(s => '<tr><td><code>' + esc(s.name) + '</code></td><td>' + s.tipo + '</td><td>' + (s.tipo === 'ARREGLO' ? s.size : '-') + '</td><td>línea ' + s.line + '</td><td><code>' + (s.name in val ? esc(valorTxt(val[s.name])) : '-') + '</code></td></tr>').join('') + '</table>';
+}
+function renderVivas() {
+  const cont = $('#vivas');
+  if (!S.snap.length) { cont.innerHTML = '<span class="vacio">Aparecen al ejecutar.</span>'; return; }
+  cont.innerHTML = S.snap.map(s => {
+    const txt = valorTxt(s.valor), cambio = S.prev[s.name] !== undefined && S.prev[s.name] !== txt;
+    return '<span class="chip' + (cambio ? ' chg' : '') + (s.tipo === 'CONST' ? ' const' : '') + '"><b>' + esc(s.name) + '</b> = ' + esc(txt) + '</span>';
+  }).join('');
+  S.prev = {}; S.snap.forEach(s => S.prev[s.name] = valorTxt(s.valor));
+}
+
+/* ---------- traza ---------- */
+function renderTrazaVacia() { $('#sub-traza').innerHTML = '<div class="vacio">Aquí se va escribiendo cada instrucción que ejecuta el programa, con su efecto.</div>'; }
+function addTraza(info) {
+  const p = $('#sub-traza');
+  let tb = p.querySelector('tbody');
+  if (!tb) { p.innerHTML = '<table><thead><tr><th>#</th><th>Línea</th><th>Instrucción</th><th>Efecto</th></tr></thead><tbody></tbody></table>'; tb = p.querySelector('tbody'); }
+  tb.querySelectorAll('tr.cur').forEach(r => r.classList.remove('cur'));
+  const tr = document.createElement('tr'); tr.className = 'cur';
+  tr.innerHTML = '<td>' + info.n + '</td><td>' + info.line + '</td><td><code>' + esc(info.instr) + '</code></td><td>' + esc(info.efecto) + '</td>';
+  tb.appendChild(tr); p.scrollTop = p.scrollHeight;
+}
+
+/* ---------- errores ---------- */
+function filasErrores(hit) {
+  return '<table><tr><th>Código</th><th>Fase</th><th>Descripción</th></tr>' +
+    Object.entries(ERRORES).map(([k, v]) => '<tr' + (k === hit ? ' class="hit"' : '') + '><td><b>' + k + '</b></td><td>' + ERR_FASE[k] + '</td><td>' + v + '</td></tr>').join('') + '</table>';
+}
+function renderErrores() {
+  const p = $('#sub-errores'); const e = S.error;
+  const cab = e
+    ? '<div class="errbox"><b>ERROR ' + e.code + ': ' + ERRORES[e.code] + '</b><div style="margin-top:6px">Fase: <b>' + e.fase + '</b>' + (e.line ? ' &nbsp;&middot;&nbsp; Línea <b>' + e.line + '</b>' : '') + (e.detail ? ' &nbsp;&middot;&nbsp; Detalle: <b>' + esc(e.detail) + '</b>' : '') + '</div>' +
+      (e.line ? '<code>' + e.line + ' | ' + esc((code.value.split('\n')[e.line - 1] || '').trim()) + '</code>' : '') +
+      '<div style="margin-top:8px;color:var(--muted)">Cómo corregirlo: ' + ERR_AYUDA[e.code] + '</div></div>'
+    : (S.c ? '<div class="okbox">Sin errores en esta ejecución.</div>' : '<div class="vacio" style="margin-bottom:10px">Todavía no se ha ejecutado nada.</div>');
+  p.innerHTML = cab + '<h3>Tabla de errores del lenguaje</h3>' + filasErrores(e && e.code);
+}
+
+/* ---------- ejecutar ---------- */
+function limpiarResultados(todo) {
+  S.c = null; S.trace = []; S.snap = []; S.prev = {}; S.errLine = 0; S.curLine = 0; S.error = null; S.pasos = 0;
+  renderPipe(); renderTokens(); renderArbol(); renderSimbolos(); renderVivas(); renderTrazaVacia(); renderErrores();
+  if (todo) limpiarConsola();
+  actualizarEditor();
+}
+function setCorriendo(si) {
+  ['bRun', 'bStep', 'bAuto', 'ejemplos'].forEach(id => $('#' + id).disabled = si);
+  $('#bStop').disabled = !si;
+  code.readOnly = si;
+  if (!si) { $('#stepbar').hidden = true; $('#entrada').disabled = true; $('#bEnviar').disabled = true; }
+}
+function mostrarError(e) {
+  S.error = { code: e.code, detail: e.detail, line: e.line, fase: ERR_FASE[e.code] };
+  S.errLine = e.line || 0; S.curLine = 0;
+  linea('*** ERROR ' + e.code + ': ' + ERRORES[e.code] + ' ***', 'err');
+  if (e.detail) linea('    Detalle: ' + e.detail, 'err');
+  if (e.line) linea('    (cerca de la línea ' + e.line + ')', 'err');
+  renderErrores(); renderSimbolos(); actualizarEditor(); if (e.line) verLinea(e.line); irSub('errores');
+}
+const io = {
+  async paso(info) {
+    const r = S.runner;
+    if (r.stop) throw new Abortar();
+    S.trace.push(info); S.snap = info.vars; S.pasos = info.n;
+    if (r.modo === 'run') {                       // modo rapido: sin dibujar en cada paso
+      if (info.n % 400 === 0) await sleep(0);
+      if (r.stop) throw new Abortar();
+      return;
+    }
+    S.curLine = info.line;
+    addTraza(info); renderVivas(); renderSimbolos(); actualizarEditor(); verLinea(info.line); renderPipe({ ...S.c.estado, ejecucion: 'run' });
+    if (r.modo === 'step') {
+      $('#stepInfo').textContent = 'Paso ' + info.n + ' (l\u00ednea ' + info.line + '): ' + info.efecto;
+      await new Promise(res => { r.siguiente = res; });
+    } else if (r.modo === 'auto') {
+      const ms = 1550 - 150 * (+$('#vel').value);
+      await new Promise(res => { r.despertar = res; setTimeout(res, ms); });
+      r.despertar = null;
+    }
+    if (r.stop) throw new Abortar();
+  },
+  salida(t) { linea(t); },
+  leer(etiqueta) { return pedirValor(etiqueta); }
+};
+/* Al terminar (o fallar) se dibuja la traza completa y las variables finales. */
+function finalizarVista() {
+  const p = $('#sub-traza'), t = S.trace, MAX = 2000;
+  if (!t.length) { renderTrazaVacia(); }
+  else {
+    const mostrar = t.slice(-MAX);
+    p.innerHTML = (t.length > MAX ? '<div class="vacio">Mostrando los \u00faltimos ' + MAX + ' de ' + t.length + ' pasos.</div>' : '') +
+      '<table><thead><tr><th>#</th><th>L\u00ednea</th><th>Instrucci\u00f3n</th><th>Efecto</th></tr></thead><tbody>' +
+      mostrar.map(x => '<tr><td>' + x.n + '</td><td>' + x.line + '</td><td><code>' + esc(x.instr) + '</code></td><td>' + esc(x.efecto) + '</td></tr>').join('') + '</tbody></table>';
+  }
+  S.curLine = 0; renderVivas(); renderSimbolos();
+}
+async function lanzar(modo) {
+  if (S.runner) return;
+  limpiarResultados(true);
+  const src = code.value;
+  const c = compilar(src);
+  S.c = c;
+  const est = { ...c.estado };
+  renderTokens(); renderArbol(); renderSimbolos();
+  if (c.error) { renderPipe(est); mostrarError(new AromaError(c.error.code, c.error.detail, c.error.line)); return; }
+  renderPipe({ ...est, ejecucion: 'run' });
+  S.runner = { modo, stop: false };
+  setCorriendo(true);
+  if (modo === 'step') { $('#stepbar').hidden = false; $('#stepInfo').textContent = 'Pulsa "Siguiente paso" para avanzar una instrucción.'; irSub('traza'); }
+  if (modo === 'auto') irSub('traza');
+  try {
+    await ejecutar(c.ast, io, src);
+    finalizarVista();
+    renderPipe({ ...est, ejecucion: 'ok' });
+    linea('=== Programa finalizado sin errores ===', 'okk');
+    S.curLine = 0; actualizarEditor(); renderErrores();
+    if (modo === 'run') { irSub('traza'); const tz = $('#sub-traza'); tz.scrollTop = tz.scrollHeight; }
+  } catch (e) {
+    if (e instanceof Abortar) { finalizarVista(); linea('[Ejecuci\u00f3n detenida]', 'sys'); renderPipe({ ...est, ejecucion: '' }); S.curLine = 0; actualizarEditor(); }
+    else if (e instanceof AromaError) { finalizarVista(); renderPipe({ ...est, ejecucion: 'bad' }); mostrarError(e); }
+    else { linea('Error interno: ' + e.message, 'err'); throw e; }
+  } finally {
+    S.runner = null; setCorriendo(false);
+  }
+}
+$('#bRun').onclick = () => lanzar('run');
+$('#bStep').onclick = () => lanzar('step');
+$('#bAuto').onclick = () => lanzar('auto');
+$('#bNext').onclick = () => { const r = S.runner; if (r && r.siguiente) { const f = r.siguiente; r.siguiente = null; f(); } };
+$('#bCont').onclick = () => { const r = S.runner; if (r) { r.modo = 'run'; $('#stepbar').hidden = true; if (r.siguiente) { const f = r.siguiente; r.siguiente = null; f(); } } };
+$('#bStop').onclick = () => { const r = S.runner; if (!r) return; r.stop = true; if (r.despertar) r.despertar(); if (r.siguiente) { const f = r.siguiente; r.siguiente = null; f(); } if (r.pendiente) r.pendiente.cancelar(); };
+
+/* ---------- pestaña del lenguaje ---------- */
+$('#gramatica').textContent = GRAMATICA;
+$('#tablaErroresLen').innerHTML = filasErrores();
+
+/* ---------- arranque ---------- */
+renderForm(); renderGuardadas(); limpiarResultados(true);
+window.AromaUI = { lanzar, irA, irSub, S };
+})();
+</script>
+</body>
+</html>
