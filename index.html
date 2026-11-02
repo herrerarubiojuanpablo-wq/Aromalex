@@ -217,6 +217,8 @@ tr.hit td{background:var(--badbg)!important;font-weight:600}
           <button class="btn" id="bAuto">&#9193; Animar</button>
           <label style="display:flex;align-items:center;gap:6px">Velocidad <input type="range" id="vel" min="1" max="10" value="6"></label>
           <button class="btn danger" id="bStop" disabled>&#9632; Detener</button>
+          <button class="btn" id="bAlo" title="Compila y descarga el programa objeto">&#11015; Generar .alo</button>
+          <label class="btn" style="cursor:pointer" title="Carga un .alo y lo ejecuta en la máquina virtual">Ejecutar .alo<input type="file" id="aloIn" accept=".alo" hidden></label>
         </div>
         <div class="stepbar" id="stepbar" hidden>
           <button class="btn primary" id="bNext">Siguiente paso &rarr;</button>
@@ -782,19 +784,20 @@ const GRAMATICA =
 /* ---------------- CODIGO INTERMEDIO (maquina de pila) ----------------
    Mismo juego de instrucciones que aromalex.c. Las direcciones son
    numeros de instruccion. Incluye plegado de constantes. */
+function calcOp(op, a, b) {
+  switch (op) {
+    case '+': return a + b; case '-': return a - b; case '*': return a * b; case '/': return a / b;
+    case '==': return Math.abs(a - b) < EPS ? 1 : 0; case '!=': return Math.abs(a - b) >= EPS ? 1 : 0;
+    case '<': return a < b - EPS ? 1 : 0; case '>': return a > b + EPS ? 1 : 0;
+    case '<=': return a <= b + EPS ? 1 : 0; case '>=': return a >= b - EPS ? 1 : 0;
+    case 'Y': return (a !== 0 && b !== 0) ? 1 : 0; case 'O': return (a !== 0 || b !== 0) ? 1 : 0;
+  }
+  return 0;
+}
 function generarBytecode(ast) {
   const code = []; let pliegues = 0;
   const OPS = { '+':'ADD','-':'SUB','*':'MUL','/':'DIV','==':'EQ','!=':'NE','<':'LT','>':'GT','<=':'LE','>=':'GE','Y':'AND','O':'OR' };
-  const calc = (op, a, b) => {
-    switch (op) {
-      case '+': return a + b; case '-': return a - b; case '*': return a * b; case '/': return a / b;
-      case '==': return Math.abs(a - b) < EPS ? 1 : 0; case '!=': return Math.abs(a - b) >= EPS ? 1 : 0;
-      case '<': return a < b - EPS ? 1 : 0; case '>': return a > b + EPS ? 1 : 0;
-      case '<=': return a <= b + EPS ? 1 : 0; case '>=': return a >= b - EPS ? 1 : 0;
-      case 'Y': return (a !== 0 && b !== 0) ? 1 : 0; case 'O': return (a !== 0 || b !== 0) ? 1 : 0;
-    }
-    return 0;
-  };
+  const calc = calcOp;
   /* OPTIMIZACION: dos numeros fijos se resuelven al compilar (la division entre 0 no) */
   const plegar = e => {
     if (e.k === 'bin') {
@@ -809,7 +812,7 @@ function generarBytecode(ast) {
   };
   const em = (op, arg, line) => { code.push({ op, arg, line }); return code.length - 1; };
   const gen = e => {
-    if (e.k === 'num') em('PUSH', e.txt, e.line);
+    if (e.k === 'num') code[em('PUSH', e.txt, e.line)].val = e.v;
     else if (e.k === 'id') em('LOAD', e.name, e.line);
     else if (e.k === 'idx') { gen(e.index); em('LOADI', e.name, e.line); }
     else { gen(e.l); gen(e.r); em(OPS[e.op], undefined, e.line); }
@@ -850,7 +853,114 @@ function generarBytecode(ast) {
   bloque(ast.body); em('HALT');
   return { code, pliegues };
 }
-if (typeof module !== 'undefined') module.exports = { generarBytecode, tokenizar, parsear, analizarSemantica, compilar, ejecutar, generarCodigo, validarIngrediente, recetasATexto, textoARecetas, exprTexto, fmt, EJEMPLOS, AromaError, ERRORES, totalReceta, redondear2, limpiarNombre };
+/* ---------------- PROGRAMA OBJETO (.alo) + MAQUINA VIRTUAL ----------------
+   Mismo formato binario que aromalex.c: un .alo hecho aqui corre en
+   aromalex.exe y al reves. */
+const OPN = ['PUSH','LOAD','STORE','LOADI','STOREI','READ','READI','ADD','SUB','MUL','DIV','EQ','NE','LT','GT','LE','GE','AND','OR','JMP','JZ','PRINTS','PRINTN','SPACE','NL','HALT'];
+const longOp = op => op === 'PUSH' ? 9 : ['LOAD','STORE','DIV','PRINTS','JMP','JZ'].includes(op) ? 3 : ['LOADI','STOREI','READ','READI'].includes(op) ? 5 : 1;
+
+function ensamblarAlo(ast, simbolos) {
+  const g = generarBytecode(ast), enc = new TextEncoder();
+  const slot = new Map(simbolos.map((s, i) => [s.name, i]));
+  const off = []; let n = 0;
+  g.code.forEach(x => { off.push(n); n += longOp(x.op); });
+  const cads = [], cmap = new Map(), cod = [], tab = [];
+  const p16 = (a, v) => a.push(v & 255, (v >> 8) & 255);
+  const dv = new DataView(new ArrayBuffer(8));
+  for (const x of g.code) {
+    cod.push(OPN.indexOf(x.op));
+    switch (x.op) {
+      case 'PUSH': dv.setFloat64(0, x.val !== undefined ? x.val : parseFloat(x.arg), true); for (let i = 0; i < 8; i++) cod.push(dv.getUint8(i)); break;
+      case 'LOAD': case 'STORE': p16(cod, slot.get(x.arg)); break;
+      case 'LOADI': case 'STOREI': case 'READ': case 'READI': p16(cod, slot.get(x.arg)); p16(cod, x.line || 0); break;
+      case 'DIV': p16(cod, x.line || 0); break;
+      case 'JMP': case 'JZ': p16(cod, off[x.arg]); break;
+      case 'PRINTS': {
+        if (!cmap.has(x.arg)) { cmap.set(x.arg, cads.length); cads.push(enc.encode(x.arg).slice(0, 63)); }
+        p16(cod, cmap.get(x.arg)); break;
+      }
+    }
+  }
+  if (cod.length > 60000 || cads.length > 300 || simbolos.length > 100) throw new Error('el programa es demasiado grande para el formato .alo');
+  const out = [65, 76, 88, 49, 1];
+  p16(out, simbolos.length); p16(out, cads.length); p16(out, cod.length);
+  for (const s of simbolos) {
+    const nb = enc.encode(s.name); if (nb.length > 63) throw new Error('nombre demasiado largo: ' + s.name);
+    out.push({ CONST: 0, VAR: 1, ARREGLO: 2 }[s.tipo]); p16(out, s.tipo === 'ARREGLO' ? s.size : 0); out.push(nb.length, ...nb);
+  }
+  for (const c of cads) out.push(c.length, ...c);
+  return Uint8Array.from(out.concat(cod));
+}
+
+/* Regla del proyecto (igual que aromalex.c): un arreglo "esencias" no puede sumar mas de 100 ml. */
+function reglaVolumen(r) {
+  const i = r.syms.findIndex(s => s.name === 'esencias' && s.tipo === 2);
+  if (i < 0) return null;
+  const t = r.mem[i].arr.reduce((a, b) => a + b, 0);
+  return t > 100 ? '*** RECETA INVALIDA: el volumen total es ' + fmt(t) + ' ml; el maximo permitido es 100 ml. ***' : null;
+}
+async function ejecutarAlo(b, io) {
+  const bad = m => { throw new Error('programa objeto no válido: ' + m); };
+  if (b.length < 11 || b[0] !== 65 || b[1] !== 76 || b[2] !== 88 || b[3] !== 49) bad('falta la cabecera ALX1');
+  if (b[4] !== 1) bad('versión no soportada');
+  const u16 = p => b[p] | (b[p + 1] << 8);
+  const nS = u16(5), nC = u16(7), nK = u16(9), dec = new TextDecoder();
+  let p = 11; const syms = [], strs = [];
+  for (let i = 0; i < nS; i++) {
+    if (p + 4 > b.length) bad('archivo incompleto');
+    const tipo = b[p], tam = u16(p + 1), nl = b[p + 3]; p += 4;
+    if (tipo > 2 || p + nl > b.length) bad('tabla de símbolos');
+    syms.push({ tipo, tam, name: dec.decode(b.subarray(p, p + nl)) }); p += nl;
+  }
+  for (let i = 0; i < nC; i++) {
+    if (p + 1 > b.length) bad('archivo incompleto');
+    const nl = b[p++]; if (p + nl > b.length) bad('tabla de textos');
+    strs.push(dec.decode(b.subarray(p, p + nl))); p += nl;
+  }
+  if (p + nK !== b.length) bad('el tamaño del código no coincide');
+  const cod = b.subarray(p), dv = new DataView(b.buffer, b.byteOffset + p, nK);
+  const mem = syms.map(s => ({ v: 0, arr: new Array(s.tipo === 2 ? s.tam : 0).fill(0) }));
+  const pila = []; let pc = 0, pasos = 0;
+  const pop = () => { if (!pila.length) bad('pila vacía'); return pila.pop(); };
+  const sym = s => { if (!syms[s]) bad('símbolo inexistente'); return syms[s]; };
+  const ix = (s, v, ln) => {
+    const sy = sym(s);
+    if (v < 0 || v >= sy.tam) throw new AromaError('E05', sy.name + '[' + Math.trunc(v) + '] fuera de rango (tamaño ' + sy.tam + ')', ln);
+    if (v !== Math.trunc(v)) throw new AromaError('E08', 'el índice de un arreglo debe ser entero', ln);
+    return v;
+  };
+  const leerNum = async (etq, ln) => {
+    const crudo = await io.leer(etq);
+    if (!/^\s*[-+]?(\d+(\.\d*)?|\.\d+)\s*$/.test(crudo)) throw new AromaError('E08', 'se recibió "' + String(crudo).trim() + '"', ln);
+    return parseFloat(crudo);
+  };
+  for (;;) {
+    if (pc >= nK) bad('el programa se sale del código');
+    if (++pasos % 2000 === 0) { await io.ceder(); if (io.parar()) throw new Abortar(); }
+    if (pasos > 3000000) throw new AromaError('E09', 'se superaron 3000000 instrucciones', 0);
+    const op = OPN[cod[pc++]]; if (!op) bad('instrucción desconocida');
+    const a16 = () => { if (pc + 2 > nK) bad('instrucción incompleta'); const v = cod[pc] | (cod[pc + 1] << 8); pc += 2; return v; };
+    switch (op) {
+      case 'PUSH': if (pc + 8 > nK) bad('instrucción incompleta'); pila.push(dv.getFloat64(pc, true)); pc += 8; break;
+      case 'LOAD': { const s = a16(); sym(s); pila.push(mem[s].v); break; }
+      case 'STORE': { const s = a16(); sym(s); mem[s].v = pop(); break; }
+      case 'LOADI': { const s = a16(), ln = a16(); const i = ix(s, pop(), ln); pila.push(mem[s].arr[i]); break; }
+      case 'STOREI': { const s = a16(), ln = a16(); const v = pop(); const i = ix(s, pop(), ln); mem[s].arr[i] = v; break; }
+      case 'READ': { const s = a16(), ln = a16(); const sy = sym(s); mem[s].v = await leerNum(sy.name, ln); break; }
+      case 'READI': { const s = a16(), ln = a16(); const i = ix(s, pop(), ln); mem[s].arr[i] = await leerNum(sym(s).name + '[' + i + ']', ln); break; }
+      case 'DIV': { const ln = a16(); const d = pop(), n2 = pop(); if (Math.abs(d) < EPS) throw new AromaError('E04', 'el divisor vale 0', ln); pila.push(n2 / d); break; }
+      case 'JMP': pc = a16(); break;
+      case 'JZ': { const d = a16(); if (pop() === 0) pc = d; break; }
+      case 'PRINTS': { const c = a16(); if (c >= strs.length) bad('texto inexistente'); io.cola.push(strs[c]); break; }
+      case 'PRINTN': io.cola.push(fmt(pop())); break;
+      case 'SPACE': io.cola.push(' '); break;
+      case 'NL': io.salida(io.cola.join('')); io.cola.length = 0; break;
+      case 'HALT': return { pasos, syms, mem };
+      default: { const d = pop(), n2 = pop(); const m = { ADD: '+', SUB: '-', MUL: '*', EQ: '==', NE: '!=', LT: '<', GT: '>', LE: '<=', GE: '>=', AND: 'Y', OR: 'O' }[op]; pila.push(calcOp(m, n2, d)); }
+    }
+  }
+}
+if (typeof module !== 'undefined') module.exports = { reglaVolumen, ensamblarAlo, ejecutarAlo, generarBytecode, tokenizar, parsear, analizarSemantica, compilar, ejecutar, generarCodigo, validarIngrediente, recetasATexto, textoARecetas, exprTexto, fmt, EJEMPLOS, AromaError, ERRORES, totalReceta, redondear2, limpiarNombre };
 /*CORE-END*/
 
 /* =====================================================================
@@ -1173,7 +1283,7 @@ function limpiarResultados(todo) {
   actualizarEditor();
 }
 function setCorriendo(si) {
-  ['bRun', 'bStep', 'bAuto', 'ejemplos'].forEach(id => $('#' + id).disabled = si);
+  ['bRun', 'bStep', 'bAuto', 'bAlo', 'ejemplos'].forEach(id => $('#' + id).disabled = si);
   $('#bStop').disabled = !si;
   code.readOnly = si;
   if (!si) { $('#stepbar').hidden = true; $('#entrada').disabled = true; $('#bEnviar').disabled = true; }
@@ -1258,6 +1368,46 @@ $('#bAuto').onclick = () => lanzar('auto');
 $('#bNext').onclick = () => { const r = S.runner; if (r && r.siguiente) { const f = r.siguiente; r.siguiente = null; f(); } };
 $('#bCont').onclick = () => { const r = S.runner; if (r) { r.modo = 'run'; $('#stepbar').hidden = true; if (r.siguiente) { const f = r.siguiente; r.siguiente = null; f(); } } };
 $('#bStop').onclick = () => { const r = S.runner; if (!r) return; r.stop = true; if (r.despertar) r.despertar(); if (r.siguiente) { const f = r.siguiente; r.siguiente = null; f(); } if (r.pendiente) r.pendiente.cancelar(); };
+
+/* ---------- programa objeto (.alo): generar y ejecutar ---------- */
+$('#bAlo').onclick = () => {
+  if (S.runner) return;
+  limpiarResultados(true);
+  const src = code.value, c = compilar(src); S.c = c;
+  renderTokens(); renderArbol(); renderCodigo(); renderSimbolos();
+  if (c.error) { renderPipe(c.estado); mostrarError(new AromaError(c.error.code, c.error.detail, c.error.line)); return; }
+  renderPipe({ ...c.estado });
+  let bytes;
+  try { bytes = ensamblarAlo(c.ast, c.simbolos); } catch (e) { linea('No se pudo generar el .alo: ' + e.message, 'err'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' })); a.download = 'programa.alo';
+  document.body.appendChild(a); a.click(); a.remove();
+  linea('Programa objeto generado: programa.alo (' + bytes.length + ' bytes; el fuente pesa ' + new TextEncoder().encode(src).length + ')', 'okk');
+  irSub('codigo'); toast('programa.alo generado');
+};
+async function correrAlo(bytes, nombre) {
+  if (S.runner) return;
+  limpiarResultados(true);
+  S.runner = { modo: 'run', stop: false }; setCorriendo(true);
+  linea('=== Ejecutando programa objeto ' + nombre + ' ===', 'sys');
+  const vm = { cola: [], salida: t => linea(t), leer: pedirValor, parar: () => S.runner && S.runner.stop, ceder: () => sleep(0) };
+  try {
+    const r = await ejecutarAlo(bytes, vm), msg = reglaVolumen(r);
+    if (msg) linea(msg, 'err'); else linea('=== Programa finalizado sin errores ===', 'okk');
+  }
+  catch (e) {
+    if (e instanceof Abortar) linea('[Ejecución detenida]', 'sys');
+    else if (e instanceof AromaError) mostrarError(e);
+    else linea('*** ' + e.message + ' ***', 'err');
+  } finally { S.runner = null; setCorriendo(false); }
+}
+$('#aloIn').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => correrAlo(new Uint8Array(rd.result), f.name);
+  rd.onerror = () => toast('No se pudo leer el archivo.');
+  rd.readAsArrayBuffer(f); e.target.value = '';
+};
 
 /* ---------- pestaña del lenguaje ---------- */
 $('#gramatica').textContent = GRAMATICA;
