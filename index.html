@@ -245,12 +245,14 @@ tr.hit td{background:var(--badbg)!important;font-weight:600}
       <nav class="tabs sub" id="subTabs">
         <button data-sub="tokens" class="active">Tokens</button>
         <button data-sub="arbol">&Aacute;rbol sint&aacute;ctico</button>
+        <button data-sub="codigo">C&oacute;digo intermedio</button>
         <button data-sub="simbolos">S&iacute;mbolos</button>
         <button data-sub="traza">Ejecuci&oacute;n</button>
         <button data-sub="errores">Errores</button>
       </nav>
       <div class="subpanel active" id="sub-tokens"></div>
       <div class="subpanel" id="sub-arbol"></div>
+      <div class="subpanel" id="sub-codigo"></div>
       <div class="subpanel" id="sub-simbolos"></div>
       <div class="subpanel" id="sub-traza"></div>
       <div class="subpanel" id="sub-errores"></div>
@@ -777,7 +779,78 @@ const GRAMATICA =
 'termino      ::= factor { ( "*" | "/" ) factor }\n' +
 'factor       ::= NUM | ID [ "[" expresion "]" ] | "(" expresion ")"\n' +
 'opRel        ::= "==" | "!=" | "<" | ">" | "<=" | ">="';
-if (typeof module !== 'undefined') module.exports = { tokenizar, parsear, analizarSemantica, compilar, ejecutar, generarCodigo, validarIngrediente, recetasATexto, textoARecetas, exprTexto, fmt, EJEMPLOS, AromaError, ERRORES, totalReceta, redondear2, limpiarNombre };
+/* ---------------- CODIGO INTERMEDIO (maquina de pila) ----------------
+   Mismo juego de instrucciones que aromalex.c. Las direcciones son
+   numeros de instruccion. Incluye plegado de constantes. */
+function generarBytecode(ast) {
+  const code = []; let pliegues = 0;
+  const OPS = { '+':'ADD','-':'SUB','*':'MUL','/':'DIV','==':'EQ','!=':'NE','<':'LT','>':'GT','<=':'LE','>=':'GE','Y':'AND','O':'OR' };
+  const calc = (op, a, b) => {
+    switch (op) {
+      case '+': return a + b; case '-': return a - b; case '*': return a * b; case '/': return a / b;
+      case '==': return Math.abs(a - b) < EPS ? 1 : 0; case '!=': return Math.abs(a - b) >= EPS ? 1 : 0;
+      case '<': return a < b - EPS ? 1 : 0; case '>': return a > b + EPS ? 1 : 0;
+      case '<=': return a <= b + EPS ? 1 : 0; case '>=': return a >= b - EPS ? 1 : 0;
+      case 'Y': return (a !== 0 && b !== 0) ? 1 : 0; case 'O': return (a !== 0 || b !== 0) ? 1 : 0;
+    }
+    return 0;
+  };
+  /* OPTIMIZACION: dos numeros fijos se resuelven al compilar (la division entre 0 no) */
+  const plegar = e => {
+    if (e.k === 'bin') {
+      const l = plegar(e.l), r = plegar(e.r);
+      if (l.k === 'num' && r.k === 'num' && !(e.op === '/' && Math.abs(r.v) < EPS)) {
+        pliegues++; const v = calc(e.op, l.v, r.v); return { k: 'num', v, txt: fmt(v), line: e.line };
+      }
+      return { ...e, l, r };
+    }
+    if (e.k === 'idx') return { ...e, index: plegar(e.index) };
+    return e;
+  };
+  const em = (op, arg, line) => { code.push({ op, arg, line }); return code.length - 1; };
+  const gen = e => {
+    if (e.k === 'num') em('PUSH', e.txt, e.line);
+    else if (e.k === 'id') em('LOAD', e.name, e.line);
+    else if (e.k === 'idx') { gen(e.index); em('LOADI', e.name, e.line); }
+    else { gen(e.l); gen(e.r); em(OPS[e.op], undefined, e.line); }
+  };
+  const ex = e => gen(plegar(e));
+  const bloque = a => a.forEach(st);
+  const st = s => {
+    switch (s.k) {
+      case 'const': case 'var':
+        if (s.expr) ex(s.expr); else em('PUSH', '0', s.line);
+        em('STORE', s.name, s.line); break;
+      case 'arr': break;                                   /* la VM deja los arreglos en 0 */
+      case 'asig':
+        if (s.index) { ex(s.index); ex(s.expr); em('STOREI', s.name, s.line); }
+        else { ex(s.expr); em('STORE', s.name, s.line); }
+        break;
+      case 'leer':
+        if (s.index) { ex(s.index); em('READI', s.name, s.line); } else em('READ', s.name, s.line);
+        break;
+      case 'imp':
+        s.items.forEach((it, i) => {
+          if (i > 0) em('SPACE', undefined, s.line);
+          if (it.k === 'str') em('PRINTS', it.v, s.line); else { ex(it); em('PRINTN', undefined, s.line); }
+        });
+        em('NL', undefined, s.line); break;
+      case 'si': {
+        ex(s.cond); const jz = em('JZ', 0, s.line); bloque(s.entonces);
+        if (s.sino) { const jm = em('JMP', 0, s.line); code[jz].arg = code.length; bloque(s.sino); code[jm].arg = code.length; }
+        else code[jz].arg = code.length;
+        break;
+      }
+      case 'mientras': {
+        const ini = code.length; ex(s.cond); const jz = em('JZ', 0, s.line);
+        bloque(s.cuerpo); em('JMP', ini, s.line); code[jz].arg = code.length; break;
+      }
+    }
+  };
+  bloque(ast.body); em('HALT');
+  return { code, pliegues };
+}
+if (typeof module !== 'undefined') module.exports = { generarBytecode, tokenizar, parsear, analizarSemantica, compilar, ejecutar, generarCodigo, validarIngrediente, recetasATexto, textoARecetas, exprTexto, fmt, EJEMPLOS, AromaError, ERRORES, totalReceta, redondear2, limpiarNombre };
 /*CORE-END*/
 
 /* =====================================================================
@@ -1034,6 +1107,18 @@ function renderArbol() {
   p.innerHTML = '<details open><summary><b>programa</b> &nbsp;<span style="color:var(--muted);font-size:12px">' + c.nodos + ' nodos</span></summary><div class="blk">' + bloqueHTML(c.ast.body) + '</div></details>';
 }
 
+/* ---------- codigo intermedio ---------- */
+function renderCodigo() {
+  const p = $('#sub-codigo'); const c = S.c;
+  if (!c || !c.ast) { p.innerHTML = '<div class="vacio">' + (c && c.error ? 'No se generó código intermedio porque el programa tiene un error.' : 'Ejecuta un programa para ver su código intermedio.') + '</div>'; return; }
+  const g = generarBytecode(c.ast);
+  const d3 = n => String(n).padStart(3, '0');
+  const arg = x => (x.op === 'JMP' || x.op === 'JZ') ? '→ ' + d3(x.arg) : x.op === 'PRINTS' ? '"' + x.arg + '"' : (x.arg === undefined ? '' : x.arg);
+  p.innerHTML = '<div class="resumen"><span class="pill c-reservada">' + g.code.length + ' instrucciones</span><span class="pill c-numero">' + g.pliegues + ' operaciones resueltas al compilar</span></div>' +
+    '<table><tr><th>Dir</th><th>Instrucción</th><th>Argumento</th><th>Línea</th></tr>' +
+    g.code.map((x, i) => '<tr><td>' + d3(i) + '</td><td><b>' + x.op + '</b></td><td><code>' + esc(arg(x)) + '</code></td><td>' + (x.line || '') + '</td></tr>').join('') + '</table>';
+}
+
 /* ---------- simbolos y variables ---------- */
 function valorTxt(v) { return Array.isArray(v) ? '[' + v.map(fmt).join(', ') + ']' : fmt(v); }
 function renderSimbolos() {
@@ -1083,7 +1168,7 @@ function renderErrores() {
 /* ---------- ejecutar ---------- */
 function limpiarResultados(todo) {
   S.c = null; S.trace = []; S.snap = []; S.prev = {}; S.errLine = 0; S.curLine = 0; S.error = null; S.pasos = 0;
-  renderPipe(); renderTokens(); renderArbol(); renderSimbolos(); renderVivas(); renderTrazaVacia(); renderErrores();
+  renderPipe(); renderTokens(); renderArbol(); renderCodigo(); renderSimbolos(); renderVivas(); renderTrazaVacia(); renderErrores();
   if (todo) limpiarConsola();
   actualizarEditor();
 }
@@ -1145,7 +1230,7 @@ async function lanzar(modo) {
   const c = compilar(src);
   S.c = c;
   const est = { ...c.estado };
-  renderTokens(); renderArbol(); renderSimbolos();
+  renderTokens(); renderArbol(); renderCodigo(); renderSimbolos();
   if (c.error) { renderPipe(est); mostrarError(new AromaError(c.error.code, c.error.detail, c.error.line)); return; }
   renderPipe({ ...est, ejecucion: 'run' });
   S.runner = { modo, stop: false };
