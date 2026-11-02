@@ -247,6 +247,7 @@ tr.hit td{background:var(--badbg)!important;font-weight:600}
       <nav class="tabs sub" id="subTabs">
         <button data-sub="tokens" class="active">Tokens</button>
         <button data-sub="arbol">&Aacute;rbol sint&aacute;ctico</button>
+        <button data-sub="diagrama">Diagrama del &aacute;rbol</button>
         <button data-sub="codigo">C&oacute;digo intermedio</button>
         <button data-sub="simbolos">S&iacute;mbolos</button>
         <button data-sub="traza">Ejecuci&oacute;n</button>
@@ -254,6 +255,7 @@ tr.hit td{background:var(--badbg)!important;font-weight:600}
       </nav>
       <div class="subpanel active" id="sub-tokens"></div>
       <div class="subpanel" id="sub-arbol"></div>
+      <div class="subpanel" id="sub-diagrama"></div>
       <div class="subpanel" id="sub-codigo"></div>
       <div class="subpanel" id="sub-simbolos"></div>
       <div class="subpanel" id="sub-traza"></div>
@@ -960,7 +962,59 @@ async function ejecutarAlo(b, io) {
     }
   }
 }
-if (typeof module !== 'undefined') module.exports = { reglaVolumen, ensamblarAlo, ejecutarAlo, generarBytecode, tokenizar, parsear, analizarSemantica, compilar, ejecutar, generarCodigo, validarIngrediente, recetasATexto, textoARecetas, exprTexto, fmt, EJEMPLOS, AromaError, ERRORES, totalReceta, redondear2, limpiarNombre };
+/* ---------------- DIAGRAMA DEL ARBOL (mapa mental, de izquierda a derecha) ---------------- */
+function arbolNodos(ast) {
+  const N = (t, c, h) => ({ t, c, h: h || [] });
+  const ex = e => {
+    if (e.k === 'bin') return N(e.op, 'op', [ex(e.l), ex(e.r)]);
+    if (e.k === 'idx') return N(e.name + '[ ]', 'leaf', [ex(e.index)]);
+    return N(e.k === 'num' ? e.txt : e.name, 'leaf');
+  };
+  const tgt = s => s.index ? N(s.name + '[ ]', 'leaf', [ex(s.index)]) : N(s.name, 'leaf');
+  const bl = (t, a) => N(t, 'grp', a.map(st));
+  const st = s => {
+    switch (s.k) {
+      case 'const': return N('CONST ' + s.name, 'stmt', [ex(s.expr)]);
+      case 'var': return N('VAR ' + s.name, 'stmt', s.expr ? [ex(s.expr)] : []);
+      case 'arr': return N('ARREGLO ' + s.name + '[' + s.size + ']', 'stmt');
+      case 'asig': return N('=', 'stmt', [tgt(s), ex(s.expr)]);
+      case 'leer': return N('LEER', 'stmt', [tgt(s)]);
+      case 'imp': return N('IMPRIMIR', 'stmt', s.items.map(it => it.k === 'str' ? N('"' + it.v + '"', 'str') : ex(it)));
+      case 'si': return N('SI', 'stmt', [N('condición', 'grp', [ex(s.cond)]), bl('ENTONCES', s.entonces)].concat(s.sino ? [bl('SINO', s.sino)] : []));
+      case 'mientras': return N('MIENTRAS', 'stmt', [N('condición', 'grp', [ex(s.cond)]), bl('CUERPO', s.cuerpo)]);
+    }
+    return N('?', 'leaf');
+  };
+  return N('programa', 'prog', ast.body.map(st));
+}
+function diagramaSVG(ast, zoom) {
+  const raiz = arbolNodos(ast), H = 30, GY = 10, GX = 42, anchos = [];
+  const esc2 = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let y = 10, total = 0;
+  const medir = (n, d) => {
+    total++; if (n.t.length > 40) n.t = n.t.slice(0, 39) + '…';
+    n.w = Math.max(34, n.t.length * 7.2 + 20); n.d = d; anchos[d] = Math.max(anchos[d] || 0, n.w); n.h.forEach(h => medir(h, d + 1));
+  };
+  const colocar = n => { if (!n.h.length) { n.y = y; y += H + GY; } else { n.h.forEach(colocar); n.y = (n.h[0].y + n.h[n.h.length - 1].y) / 2; } };
+  medir(raiz, 0); colocar(raiz);
+  const xs = []; let ax = 10; anchos.forEach((w, i) => { xs[i] = ax; ax += w + GX; });
+  const W = Math.ceil(ax - GX + 10), Hh = Math.ceil(y);
+  let aristas = '', cajas = '';
+  const dib = n => {
+    n.h.forEach(h => {
+      const x1 = xs[n.d] + n.w, y1 = n.y + H / 2, x2 = xs[h.d], y2 = h.y + H / 2, mx = (x1 + x2) / 2;
+      aristas += '<path d="M' + x1 + ' ' + y1 + 'C' + mx + ' ' + y1 + ' ' + mx + ' ' + y2 + ' ' + x2 + ' ' + y2 + '"/>'; dib(h);
+    });
+    cajas += '<g class="' + n.c + '"><rect x="' + xs[n.d] + '" y="' + n.y + '" width="' + n.w + '" height="' + H + '" rx="8"/><text x="' + (xs[n.d] + n.w / 2) + '" y="' + (n.y + H / 2 + 4) + '" text-anchor="middle">' + esc2(n.t) + '</text></g>';
+  };
+  dib(raiz);
+  const css = 'path{fill:none;stroke:#B9A6E0;stroke-width:1.6}text{font:12px Consolas,"Courier New",monospace;fill:#2A2140}rect{stroke-width:1.2}' +
+    '.prog rect{fill:#3D2B56;stroke:#2A1D3D}.prog text{fill:#fff;font-weight:700}.stmt rect{fill:#E9E1F7;stroke:#7B63B5}.stmt text{font-weight:700;fill:#4B2E83}' +
+    '.grp rect{fill:#FFF1C2;stroke:#C9A227}.op rect{fill:#F3E1EC;stroke:#B2558A}.op text{font-weight:700;fill:#8A2B63}.leaf rect{fill:#fff;stroke:#B9A6E0}.str rect{fill:#E4F3E6;stroke:#8CC79B}';
+  const z = zoom || 1;
+  return { total, W, H: Hh, svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(W * z) + '" height="' + Math.round(Hh * z) + '" viewBox="0 0 ' + W + ' ' + Hh + '"><style>' + css + '</style>' + aristas + cajas + '</svg>' };
+}
+if (typeof module !== 'undefined') module.exports = { arbolNodos, diagramaSVG, reglaVolumen, ensamblarAlo, ejecutarAlo, generarBytecode, tokenizar, parsear, analizarSemantica, compilar, ejecutar, generarCodigo, validarIngrediente, recetasATexto, textoARecetas, exprTexto, fmt, EJEMPLOS, AromaError, ERRORES, totalReceta, redondear2, limpiarNombre };
 /*CORE-END*/
 
 /* =====================================================================
@@ -1217,6 +1271,24 @@ function renderArbol() {
   p.innerHTML = '<details open><summary><b>programa</b> &nbsp;<span style="color:var(--muted);font-size:12px">' + c.nodos + ' nodos</span></summary><div class="blk">' + bloqueHTML(c.ast.body) + '</div></details>';
 }
 
+/* ---------- diagrama del arbol ---------- */
+let zoomAst = 1;
+function renderDiagrama() {
+  const p = $('#sub-diagrama'); const c = S.c;
+  if (!c || !c.ast) { p.innerHTML = '<div class="vacio">' + (c && c.error ? 'No se pudo dibujar el árbol porque el programa tiene un error.' : 'Ejecuta un programa para ver su árbol como diagrama.') + '</div>'; return; }
+  const d = diagramaSVG(c.ast, zoomAst);
+  p.innerHTML = '<div class="row" style="margin-bottom:8px"><span class="pill c-reservada">' + d.total + ' nodos</span>' +
+    '<button class="btn small" id="zMenos">−</button><button class="btn small" id="zMas">+</button><button class="btn small" id="zAj">Ajustar</button><button class="btn small" id="zSvg">Descargar SVG</button></div>' + d.svg;
+  const redib = z => { zoomAst = Math.max(0.3, Math.min(2.5, z)); renderDiagrama(); };
+  $('#zMenos').onclick = () => redib(zoomAst - 0.2);
+  $('#zMas').onclick = () => redib(zoomAst + 0.2);
+  $('#zAj').onclick = () => redib(Math.min(1, (p.clientWidth - 24) / d.W * zoomAst));
+  $('#zSvg').onclick = () => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([diagramaSVG(c.ast, 1).svg], { type: 'image/svg+xml' }));
+    a.download = 'arbol_aromalex.svg'; document.body.appendChild(a); a.click(); a.remove();
+  };
+}
+
 /* ---------- codigo intermedio ---------- */
 function renderCodigo() {
   const p = $('#sub-codigo'); const c = S.c;
@@ -1278,7 +1350,7 @@ function renderErrores() {
 /* ---------- ejecutar ---------- */
 function limpiarResultados(todo) {
   S.c = null; S.trace = []; S.snap = []; S.prev = {}; S.errLine = 0; S.curLine = 0; S.error = null; S.pasos = 0;
-  renderPipe(); renderTokens(); renderArbol(); renderCodigo(); renderSimbolos(); renderVivas(); renderTrazaVacia(); renderErrores();
+  renderPipe(); renderTokens(); renderArbol(); renderDiagrama(); renderCodigo(); renderSimbolos(); renderVivas(); renderTrazaVacia(); renderErrores();
   if (todo) limpiarConsola();
   actualizarEditor();
 }
@@ -1340,7 +1412,7 @@ async function lanzar(modo) {
   const c = compilar(src);
   S.c = c;
   const est = { ...c.estado };
-  renderTokens(); renderArbol(); renderCodigo(); renderSimbolos();
+  renderTokens(); renderArbol(); renderDiagrama(); renderCodigo(); renderSimbolos();
   if (c.error) { renderPipe(est); mostrarError(new AromaError(c.error.code, c.error.detail, c.error.line)); return; }
   renderPipe({ ...est, ejecucion: 'run' });
   S.runner = { modo, stop: false };
@@ -1374,7 +1446,7 @@ $('#bAlo').onclick = () => {
   if (S.runner) return;
   limpiarResultados(true);
   const src = code.value, c = compilar(src); S.c = c;
-  renderTokens(); renderArbol(); renderCodigo(); renderSimbolos();
+  renderTokens(); renderArbol(); renderDiagrama(); renderCodigo(); renderSimbolos();
   if (c.error) { renderPipe(c.estado); mostrarError(new AromaError(c.error.code, c.error.detail, c.error.line)); return; }
   renderPipe({ ...c.estado });
   let bytes;
