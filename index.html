@@ -1106,7 +1106,10 @@ function agregar() {
   if (!isFinite(crudo)) return mensaje('Escribe un número válido en ml.');
   const e = validarIngrediente(ings, tipo, crudo);
   if (e) return mensaje(e);
-  ings.push({ tipo, nombre, ml: redondear2(crudo) });
+  /* se inserta justo debajo del ultimo ingrediente de su misma nota (Salida, Corazon, Base) */
+  let pos = 0;
+  for (let k = ings.length - 1; k >= 0; k--) { if (ings[k].tipo <= tipo) { pos = k + 1; break; } }
+  ings.splice(pos, 0, { tipo, nombre, ml: redondear2(crudo) });
   $('#iNombre').value = ''; $('#iMl').value = ''; mensaje(''); renderForm(); $('#iNombre').focus();
 }
 function guardar() {
