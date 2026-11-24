@@ -156,57 +156,14 @@ tr.hit td{background:var(--badbg)!important;font-weight:600}
     <div><h1>AromaLex Studio</h1><p>Lenguajes y Aut&oacute;matas 2 &middot; compilador de recetas de perfume</p></div>
   </div>
   <nav class="tabs main" id="mainTabs">
-    <button data-tab="recetas" class="active">Recetas</button>
-    <button data-tab="compilador">Proceso del compilador</button>
+    <button data-tab="compilador" class="active">Compilador</button>
     <button data-tab="lenguaje">El lenguaje</button>
   </nav>
 </header>
 
 <main>
-<!-- ======================= RECETAS ======================= -->
-<section id="tab-recetas" class="panel active">
-  <div class="grid2">
-    <div class="card">
-      <h2>Crear una receta</h2>
-      <label>Nombre de la receta
-        <input id="rNombre" maxlength="31" placeholder="Ej. Parfum" style="width:100%;margin-top:4px">
-      </label>
-      <div class="meter" style="margin-top:14px">
-        <div class="bar"><div id="rBar"></div></div>
-        <div class="txt" id="rContador"></div>
-      </div>
-      <div class="ing-form">
-        <label>Notas
-          <select id="iTipo"><option value="1">Salida</option><option value="2">Corazon</option><option value="3">Base</option></select>
-        </label>
-        <label>Ingrediente <input id="iNombre" maxlength="31" placeholder="Ej. Bergamota"></label>
-        <label>Mililitros (ml) <input id="iMl" type="number" step="0.01" min="0" placeholder="30"></label>
-        <button class="btn primary" id="iAdd">Agregar</button>
-      </div>
-      <div class="msg" id="rMsg"></div>
-      <div id="rLista"></div>
-      <div class="row" style="margin-top:12px">
-        <button class="btn gold" id="rGuardar" disabled>Guardar receta</button>
-        <button class="btn" id="rLimpiar">Limpiar</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="head">
-        <h2>Recetas guardadas <span id="rCount" style="color:var(--muted);font-size:14px"></span></h2>
-        <p style="color:var(--muted);font-size:12px;margin:0">Se guardan automáticamente en este navegador. Usa “Exportar recetas.txt” para tener una copia.</p>
-        <div class="row">
-          <button class="btn small" id="rExport">Exportar recetas.txt</button>
-          <label class="btn small" style="cursor:pointer">Importar<input type="file" id="rImport" accept=".txt" hidden></label>
-        </div>
-      </div>
-      <div id="rGuardadas"></div>
-    </div>
-  </div>
-</section>
-
 <!-- ======================= COMPILADOR ======================= -->
-<section id="tab-compilador" class="panel">
+<section id="tab-compilador" class="panel active">
   <div class="workspace">
     <div>
       <div class="card">
@@ -750,6 +707,10 @@ function textoARecetas(txt) {
 const EJEMPLOS = [
   { t: 'Receta con contador de ml (ejemplo del proyecto)', c:
 'INICIO\n  CONST VOLUMEN_TOTAL = 100;\n  VAR total = 0;\n  VAR ml = 0;\n  VAR n = 1;\n\n  IMPRIMIR "Receta de perfume: llena el frasco de", VOLUMEN_TOTAL, "ml";\n\n  MIENTRAS (total < VOLUMEN_TOTAL) HACER\n    IMPRIMIR "Esencia", n, "- faltan", VOLUMEN_TOTAL - total, "ml";\n    LEER ml;\n    SI (ml <= 0) ENTONCES\n      IMPRIMIR "La cantidad debe ser mayor que 0.";\n    SINO\n      SI (total + ml > VOLUMEN_TOTAL) ENTONCES\n        IMPRIMIR "Te pasas del frasco. Maximo permitido:", VOLUMEN_TOTAL - total, "ml";\n      SINO\n        total = total + ml;\n        n = n + 1;\n        IMPRIMIR "Llevas", total, "ml de", VOLUMEN_TOTAL, "ml";\n      FINSI\n    FINSI\n  FINMIENTRAS\n\n  IMPRIMIR "Receta completa. Esencias usadas:", n - 1, "- total:", total, "ml";\nFIN\n' },
+  { t: 'Receta con tres esencias (valida 100 ml)', c:
+'INICIO\n  CONST VOLUMEN_TOTAL = 100;\n  ARREGLO esencias[3];\n  VAR total = 0;\n  VAR i = 0;\n  LEER esencias[0];\n  LEER esencias[1];\n  LEER esencias[2];\n  MIENTRAS (i < 3) HACER\n    total = total + esencias[i];\n    i = i + 1;\n  FINMIENTRAS\n  SI (total == VOLUMEN_TOTAL) ENTONCES\n    IMPRIMIR "Receta valida";\n  SINO\n    IMPRIMIR "Error: el total no es 100ml";\n  FINSI\nFIN\n' },
+  { t: 'Receta por notas: salida, corazon y base', c:
+'INICIO\n  CONST VOLUMEN_TOTAL = 100;\n  VAR salida = 0;\n  VAR corazon = 0;\n  VAR base = 0;\n  VAR total = 0;\n  IMPRIMIR "Ml de notas de salida, corazon y base:";\n  LEER salida;\n  LEER corazon;\n  LEER base;\n  total = salida + corazon + base;\n  IMPRIMIR "Total:", total, "ml";\n  SI (salida < 1) ENTONCES\n    IMPRIMIR "Receta invalida: falta una nota de salida";\n  SINO\n    SI (total == VOLUMEN_TOTAL) ENTONCES\n      IMPRIMIR "Receta valida";\n    SINO\n      SI (total < VOLUMEN_TOTAL) ENTONCES\n        IMPRIMIR "Receta invalida: faltan", VOLUMEN_TOTAL - total, "ml";\n      SINO\n        IMPRIMIR "Receta invalida: sobran", total - VOLUMEN_TOTAL, "ml";\n      FINSI\n    FINSI\n  FINSI\nFIN\n' },
   { t: 'Operaciones con prioridad', c:
 'INICIO\n  VAR r = 0;\n  r = (3 + 2) * 4 - 10 / 2;\n  IMPRIMIR "Resultado:", r;\nFIN\n' },
   { t: 'Condicional con Y (pureza y temperatura)', c:
@@ -1038,142 +999,6 @@ function irSub(sub) {
   $$('.subpanel').forEach(p => p.classList.toggle('active', p.id === 'sub-' + sub));
 }
 $$('#subTabs button').forEach(b => b.onclick = () => irSub(b.dataset.sub));
-
-/* =================================================================
-   RECETAS
-   ================================================================= */
-const KEY = 'aromalex_recetas_v1';
-const Store = {
-  load() {
-    const t = localStorage.getItem(KEY);
-    return t === null ? null : JSON.parse(t);
-  },
-  save(l) { localStorage.setItem(KEY, JSON.stringify(l)); }
-};
-function errorAlmacenamientoRecetas(error) {
-  console.error('No se pudo acceder al almacenamiento de recetas del navegador.', error);
-  toast('No se pudo acceder o guardar las recetas. Exporta una copia o revisa el almacenamiento del navegador.');
-}
-let guardadas = [];
-let errorAlmacenamiento = null;
-try {
-  guardadas = Store.load();
-} catch (error) {
-  errorAlmacenamiento = error;
-}
-if (guardadas === null) {
-  guardadas = [{ nombre: 'Citrico (ejemplo)', ings: [
-    { tipo: 1, nombre: 'Bergamota', ml: 30 }, { tipo: 2, nombre: 'Almizcle', ml: 10 }, { tipo: 3, nombre: 'Alcohol', ml: 60 }] }];
-  errorAlmacenamiento = null;
-  try { Store.save(guardadas); } catch (error) { errorAlmacenamiento = error; }
-}
-if (errorAlmacenamiento) {
-  errorAlmacenamientoRecetas(errorAlmacenamiento);
-}
-let ings = [];
-function guardarRecetas(nuevas) {
-  try {
-    Store.save(nuevas);
-    guardadas = nuevas;
-    return true;
-  } catch (error) {
-    errorAlmacenamientoRecetas(error);
-    return false;
-  }
-}
-
-function renderForm() {
-  const total = totalReceta(ings), faltan = redondear2(100 - total);
-  const bar = $('#rBar');
-  bar.style.width = Math.min(100, total) + '%';
-  bar.className = Math.abs(total - 100) < EPS ? 'full' : '';
-  $('#rContador').textContent = 'Llevas ' + fmt(total) + ' ml de 100 ml  \u00b7  faltan ' + fmt(faltan) + ' ml';
-  const cont = $('#rLista');
-  if (!ings.length) cont.innerHTML = '<div class="vacio">Aún no hay ingredientes. Agrega el primero arriba.</div>';
-  else cont.innerHTML = '<table><tr><th>Notas</th><th>Ingrediente</th><th class="num">ml</th><th class="num">Acumulado</th><th></th></tr>' +
-    (() => { let acc = 0; return ings.map((i, k) => { acc = redondear2(acc + i.ml);
-      return '<tr><td><span class="tag t' + i.tipo + '">' + NOMBRE_TIPO[i.tipo] + '</span></td><td>' + esc(i.nombre) + '</td><td class="num">' + fmt(i.ml) +
-        '</td><td class="num">' + fmt(acc) + '</td><td class="num"><button class="btn small" data-q="' + k + '">Quitar</button></td></tr>'; }).join(''); })() + '</table>';
-  cont.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { ings.splice(+b.dataset.q, 1); renderForm(); mensaje(''); });
-  $('#iAdd').disabled = Math.abs(total - 100) < EPS || ings.length >= MAX_ING;
-  $('#rGuardar').disabled = !(Math.abs(total - 100) < EPS);
-}
-function mensaje(t, ok) { const m = $('#rMsg'); m.textContent = t; m.className = 'msg' + (ok ? ' ok' : ''); }
-function agregar() {
-  const tipo = +$('#iTipo').value, nombre = limpiarNombre($('#iNombre').value), crudo = parseFloat($('#iMl').value);
-  if (!nombre) return mensaje('El nombre del ingrediente no puede estar vacío.');
-  if (nombre.length > 31) return mensaje('Máximo 31 caracteres.');
-  if (!isFinite(crudo)) return mensaje('Escribe un número válido en ml.');
-  const e = validarIngrediente(ings, tipo, crudo);
-  if (e) return mensaje(e);
-  /* se inserta justo debajo del ultimo ingrediente de su misma nota (Salida, Corazon, Base) */
-  let pos = 0;
-  for (let k = ings.length - 1; k >= 0; k--) { if (ings[k].tipo <= tipo) { pos = k + 1; break; } }
-  ings.splice(pos, 0, { tipo, nombre, ml: redondear2(crudo) });
-  $('#iNombre').value = ''; $('#iMl').value = ''; mensaje(''); renderForm(); $('#iNombre').focus();
-}
-function guardar() {
-  const nombre = limpiarNombre($('#rNombre').value);
-  if (!nombre) return mensaje('Ponle un nombre a la receta.');
-  if (nombre.length > 31) return mensaje('El nombre admite máximo 31 caracteres.');
-  if (guardadas.some(r => r.nombre.toLowerCase() === nombre.toLowerCase())) return mensaje('Ya existe una receta con ese nombre.');
-  if (!ings.some(i => i.tipo === 1)) return mensaje('La receta necesita al menos una nota de salida.');
-  if (Math.abs(totalReceta(ings) - 100) >= EPS) return mensaje('La receta debe sumar exactamente 100 ml.');
-  const nuevas = [...guardadas, { nombre, ings: ings.map(i => ({ ...i })) }];
-  if (!guardarRecetas(nuevas)) return;
-  ings = []; $('#rNombre').value = ''; mensaje('Receta guardada.', true); renderForm(); renderGuardadas(); toast('Receta guardada: ' + nombre);
-}
-$('#iAdd').onclick = agregar;
-$('#rGuardar').onclick = guardar;
-$('#rLimpiar').onclick = () => { ings = []; $('#rNombre').value = ''; mensaje(''); renderForm(); };
-['iNombre', 'iMl'].forEach(id => $('#' + id).addEventListener('keydown', e => { if (e.key === 'Enter') agregar(); }));
-
-function renderGuardadas() {
-  $('#rCount').textContent = '(' + guardadas.length + ')';
-  const cont = $('#rGuardadas');
-  if (!guardadas.length) { cont.innerHTML = '<div class="vacio">Todavía no hay recetas. Crea una a la izquierda.</div>'; return; }
-  cont.innerHTML = guardadas.map((r, k) => {
-    const total = totalReceta(r.ings), valida = Math.abs(total - 100) < EPS;
-    return '<div class="receta"><div class="rh"><b>' + esc(r.nombre) + '</b><span class="tag ' + (valida ? 't3' : 't1') + '" style="' + (valida ? 'background:var(--okbg);color:var(--ok)' : 'background:var(--badbg);color:var(--bad)') + '">' + fmt(total) + ' ml' + (valida ? ' \u2713' : ' \u2717') + '</span></div>' +
-      '<table>' + r.ings.map(i => '<tr><td style="width:100px"><span class="tag t' + i.tipo + '">' + NOMBRE_TIPO[i.tipo] + '</span></td><td>' + esc(i.nombre) + '</td><td class="num">' + fmt(i.ml) + ' ml</td></tr>').join('') + '</table>' +
-      '<div class="row" style="margin-top:10px"><button class="btn small primary" data-paso="' + k + '">Ver el proceso paso a paso</button><button class="btn small" data-abrir="' + k + '">Abrir en el compilador</button><button class="btn small" data-cod="' + k + '">Ver código</button><button class="btn small danger" data-del="' + k + '">Eliminar</button></div>' +
-      '<pre hidden id="cod' + k + '"></pre></div>';
-  }).join('');
-  cont.querySelectorAll('[data-cod]').forEach(b => b.onclick = () => { const p = $('#cod' + b.dataset.cod); p.textContent = generarCodigo(guardadas[+b.dataset.cod]); p.hidden = !p.hidden; });
-  cont.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => abrirReceta(+b.dataset.abrir, false));
-  cont.querySelectorAll('[data-paso]').forEach(b => b.onclick = () => abrirReceta(+b.dataset.paso, true));
-  cont.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
-    const indice = +b.dataset.del, r = guardadas[indice];
-    const nuevas = guardadas.filter((_, k) => k !== indice);
-    if (!guardarRecetas(nuevas)) return;
-    renderGuardadas(); toast('Eliminada: ' + r.nombre);
-  });
-}
-function abrirReceta(k, correr) {
-  $('#code').value = generarCodigo(guardadas[k]);
-  limpiarResultados(true); actualizarEditor(); irA('compilador');
-  if (correr) lanzar('step');
-}
-$('#rExport').onclick = () => {
-  const blob = new Blob([recetasATexto(guardadas)], { type: 'text/plain' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'recetas.txt'; document.body.appendChild(a); a.click(); a.remove();
-};
-$('#rImport').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const rd = new FileReader();
-  rd.onload = () => {
-    const importadas = textoARecetas(String(rd.result));
-    const nuevas = [...guardadas]; let n = 0;
-    importadas.forEach(r => { if (!nuevas.some(g => g.nombre.toLowerCase() === r.nombre.toLowerCase())) { nuevas.push(r); n++; } });
-    if (!guardarRecetas(nuevas)) return;
-    renderGuardadas(); toast(n + ' receta(s) importada(s)');
-  };
-  rd.onerror = () => {
-    console.error('No se pudo leer el archivo de recetas.', rd.error);
-    toast('No se pudo leer el archivo de recetas.');
-  };
-  rd.readAsText(f); e.target.value = '';
-};
 
 /* =================================================================
    COMPILADOR: editor
@@ -1489,7 +1314,7 @@ $('#gramatica').textContent = GRAMATICA;
 $('#tablaErroresLen').innerHTML = filasErrores();
 
 /* ---------- arranque ---------- */
-renderForm(); renderGuardadas(); limpiarResultados(true);
+limpiarResultados(true);
 window.AromaUI = { lanzar, irA, irSub, S };
 })();
 </script>
